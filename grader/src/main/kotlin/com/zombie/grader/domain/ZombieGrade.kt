@@ -2,7 +2,7 @@ package com.zombie.grader.domain
 
 enum class ZombieGrade {
     NONE,
-    SPROUT,
+    SEEDLING,
     ZOMBIE,
     BOSS;
 
@@ -10,7 +10,7 @@ enum class ZombieGrade {
         fun from(staleDays: Long): ZombieGrade = when {
             staleDays >= 14 -> BOSS
             staleDays >= 7  -> ZOMBIE
-            staleDays >= 3  -> SPROUT
+            staleDays >= 3  -> SEEDLING
             else            -> NONE
         }
     }
