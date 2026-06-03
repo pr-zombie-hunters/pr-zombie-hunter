@@ -1,18 +1,16 @@
 package com.zombie.graphql.domain
 
-// TODO: BA/BB 싱크 - collector/grader 팀원과 필드명 확인 필요
+// BA/BB 싱크 완료 - collector PullRequest 엔티티 기준으로 필드명 통일
 data class PullRequestType(
     val id: Long,
-    val githubPrId: Long,
+    val prNumber: Int,
     val title: String,
     val author: String,
-    val repositoryName: String,
-    val url: String,
-    val grade: ZombieGrade,
+    val repoFullName: String,
+    val htmlUrl: String,
+    val state: String,
+    val zombieGrade: ZombieGrade,
     val staleDays: Long,
-    val requestedReviewers: Int,
-    val completedReviews: Int,
+    val lastActivityAt: String,
     val createdAt: String,
-    val updatedAt: String,
-    val notifiedAt: String? = null,
 )

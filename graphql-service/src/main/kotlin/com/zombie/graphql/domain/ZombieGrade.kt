@@ -1,9 +1,10 @@
 package com.zombie.graphql.domain
 
-// TODO: BA/BB 싱크 - grader 모듈의 ZombieGrade enum과 필드명 일치 확인 필요
+// BA/BB 싱크 완료 - collector의 zombieGrade 기준으로 통일
+// SEEDLING → SPROUT 수정
 enum class ZombieGrade {
     NONE,
-    SEEDLING,
+    SPROUT,
     ZOMBIE,
     BOSS
 }
