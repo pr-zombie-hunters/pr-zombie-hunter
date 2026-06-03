@@ -3,23 +3,16 @@
 **/build/
 !**/src/**/build/
 HELP.md
-*.bat
+
+# gradle wrapper는 반드시 커밋
+!gradlew
+!gradlew.bat
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+
 .gitattributes
 gradle-app.setting
-!gradle-wrapper.jar
-!gradle-wrapper.properties
 .gradletasknamecache
 .project
 .classpath
-
-# IntelliJ
-.idea/
-*.iml
-*.iws
-
-# OS
-.DS_Store
-Thumbs.db
-
-# 환경변수
 .env
