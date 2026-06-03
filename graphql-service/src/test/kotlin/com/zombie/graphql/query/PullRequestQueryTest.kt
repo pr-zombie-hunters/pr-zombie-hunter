@@ -64,9 +64,9 @@ class PullRequestQueryTest : DescribeSpec({
             }
 
             it("해당 등급의 PR이 없으면 빈 리스트를 반환한다") {
-                every { mockRepository.findAllByZombieGrade("SPROUT") } returns emptyList()
+                every { mockRepository.findAllByZombieGrade("SEEDLING") } returns emptyList()
 
-                val result = query.pullRequests(ZombieGrade.SPROUT)
+                val result = query.pullRequests(ZombieGrade.SEEDLING)
 
                 result shouldHaveSize 0
             }

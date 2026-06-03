@@ -1,10 +1,9 @@
 package com.zombie.graphql.domain
 
-// BA/BB 싱크 완료 - collector의 zombieGrade 기준으로 통일
-// SEEDLING → SPROUT 수정
+// 팀 싱크 완료 - SEEDLING으로 통일 (grader 기준)
 enum class ZombieGrade {
     NONE,
-    SPROUT,
+    SEEDLING,
     ZOMBIE,
     BOSS
 }
