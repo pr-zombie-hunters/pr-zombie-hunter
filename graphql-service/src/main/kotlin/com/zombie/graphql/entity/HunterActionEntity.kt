@@ -4,12 +4,13 @@ import jakarta.persistence.*
 import java.time.LocalDateTime
 
 @Entity
-@Table(name = "hunter_actions")
+@Table(name = "hunter_action")
 class HunterActionEntity(
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0,
 
-    val prId: Long,
-    val hunterName: String,
-    val huntedAt: LocalDateTime = LocalDateTime.now(),
+    val prId: String,
+    val hunterId: String,
+    val actionType: String,
+    val createdAt: LocalDateTime = LocalDateTime.now(),
 )

@@ -1,25 +1,18 @@
-CREATE TABLE repositories (
-    id      BIGINT AUTO_INCREMENT PRIMARY KEY,
-    owner   VARCHAR(100) NOT NULL,
-    name    VARCHAR(100) NOT NULL,
-    sector  VARCHAR(50)  NOT NULL DEFAULT 'DEFAULT',
-    tracked BOOLEAN      NOT NULL DEFAULT TRUE,
-    UNIQUE KEY uq_repo (owner, name)
-);
+CREATE TABLE pull_request (
+    id VARCHAR(50) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    author VARCHAR(100) NOT NULL,
+    last_activity_at TIMESTAMP NOT NULL,
+    zombie_grade VARCHAR(20) NOT NULL,
+    PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE pull_requests (
-    id                  BIGINT AUTO_INCREMENT PRIMARY KEY,
-    github_pr_id        BIGINT       NOT NULL,
-    title               VARCHAR(255) NOT NULL,
-    author              VARCHAR(100) NOT NULL,
-    repository_id       BIGINT       NOT NULL,
-    url                 VARCHAR(500) NOT NULL,
-    created_at          DATETIME     NOT NULL,
-    updated_at          DATETIME     NOT NULL,
-    grade               VARCHAR(20)  NOT NULL DEFAULT 'NONE',
-    requested_reviewers INT          NOT NULL DEFAULT 0,
-    completed_reviews   INT          NOT NULL DEFAULT 0,
-    notified_at         DATETIME,
-    UNIQUE KEY uq_pr (repository_id, github_pr_id),
-    CONSTRAINT fk_pr_repository FOREIGN KEY (repository_id) REFERENCES repositories (id)
-);
+CREATE TABLE zombie_grade_history (
+    id BIGINT AUTO_INCREMENT NOT NULL,
+    pr_id VARCHAR(50) NOT NULL,
+    from_grade VARCHAR(20) NOT NULL,
+    to_grade VARCHAR(20) NOT NULL,
+    changed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_zombie_grade_pr FOREIGN KEY (pr_id) REFERENCES pull_request (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

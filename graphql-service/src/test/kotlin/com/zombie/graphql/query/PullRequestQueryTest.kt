@@ -1,7 +1,7 @@
 package com.zombie.graphql.query
 
-import com.zombie.graphql.domain.PullRequestType
 import com.zombie.graphql.domain.ZombieGrade
+import com.zombie.graphql.entity.PullRequestEntity
 import com.zombie.graphql.entity.PullRequestJpaRepository
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.collections.shouldHaveSize
@@ -9,7 +9,7 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import java.time.LocalDateTime
-import java.time.temporal.ChronoUnit
+import java.util.Optional
 
 class PullRequestQueryTest : DescribeSpec({
 
@@ -18,27 +18,17 @@ class PullRequestQueryTest : DescribeSpec({
 
     val now = LocalDateTime.now()
 
-    fun makePR(
-        id: Long,
-        prNumber: Int,
-        title: String,
-        grade: String,
-        lastActivityAt: LocalDateTime,
-    ) = com.zombie.graphql.entity.PullRequestEntity(
-        id = id,
-        prNumber = prNumber,
-        title = title,
-        author = "tester",
-        repoFullName = "pr-zombie-hunters/pr-zombie-hunter",
-        htmlUrl = "https://github.com/pr/$prNumber",
-        state = "OPEN",
-        lastActivityAt = lastActivityAt,
-        zombieGrade = grade,
-        createdAt = now,
-    )
+    fun makePR(id: String, title: String, grade: String, daysAgo: Long) =
+        PullRequestEntity(
+            id = id,
+            title = title,
+            author = "tester",
+            lastActivityAt = now.minusDays(daysAgo),
+            zombieGrade = grade,
+        )
 
-    val bossPR = makePR(1L, 42, "feat/auth-refactor", "BOSS", now.minusDays(14))
-    val zombiePR = makePR(2L, 10, "fix/ui-glitch", "ZOMBIE", now.minusDays(9))
+    val bossPR = makePR("pr-zombie-hunters/repo#42", "feat/auth-refactor", "BOSS", 14)
+    val zombiePR = makePR("pr-zombie-hunters/repo#10", "fix/ui-glitch", "ZOMBIE", 9)
 
     describe("PullRequestQuery") {
 
@@ -74,20 +64,19 @@ class PullRequestQueryTest : DescribeSpec({
 
         context("단건 조회") {
             it("존재하지 않는 PR id 조회 시 null을 반환한다") {
-                every { mockRepository.findById(999L) } returns java.util.Optional.empty()
+                every { mockRepository.findById("없는id") } returns Optional.empty()
 
-                val result = query.pullRequest(999L)
+                val result = query.pullRequest("없는id")
 
                 result shouldBe null
             }
 
             it("존재하는 PR id 조회 시 해당 PR을 반환한다") {
-                every { mockRepository.findById(1L) } returns java.util.Optional.of(bossPR)
+                every { mockRepository.findById("pr-zombie-hunters/repo#42") } returns Optional.of(bossPR)
 
-                val result = query.pullRequest(1L)
+                val result = query.pullRequest("pr-zombie-hunters/repo#42")
 
-                result?.id shouldBe 1L
-                result?.title shouldBe "feat/auth-refactor"
+                result?.id shouldBe "pr-zombie-hunters/repo#42"
                 result?.zombieGrade shouldBe ZombieGrade.BOSS
             }
         }

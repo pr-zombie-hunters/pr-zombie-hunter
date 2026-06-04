@@ -24,21 +24,16 @@ class PullRequestQuery(
     }
 
     // 단건 조회 - 없으면 null 반환
-    fun pullRequest(id: Long): PullRequestType? {
+    fun pullRequest(id: String): PullRequestType? {
         return pullRequestRepository.findById(id).orElse(null)?.toType()
     }
 
     private fun com.zombie.graphql.entity.PullRequestEntity.toType() = PullRequestType(
         id = id,
-        prNumber = prNumber,
         title = title,
         author = author,
-        repoFullName = repoFullName,
-        htmlUrl = htmlUrl,
-        state = state,
         zombieGrade = ZombieGrade.valueOf(zombieGrade),
         staleDays = ChronoUnit.DAYS.between(lastActivityAt, LocalDateTime.now()),
         lastActivityAt = lastActivityAt.toString(),
-        createdAt = createdAt.toString(),
     )
 }

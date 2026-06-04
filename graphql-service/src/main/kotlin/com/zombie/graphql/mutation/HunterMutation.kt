@@ -13,27 +13,21 @@ class HunterMutation(
     private val pullRequestRepository: PullRequestJpaRepository,
 ) : Mutation {
 
-    // 처치완료 - PR 상태를 KILLED로 변경하고 hunter_actions에 기록
-    fun markAsHunted(prId: Long, hunterName: String): HunterActionType {
-        // PR 상태 KILLED로 변경
-        pullRequestRepository.findById(prId).ifPresent { pr ->
-            pr.state = "KILLED"
-            pullRequestRepository.save(pr)
-        }
-
-        // 처치 기록 저장
+    // 처치완료 - hunter_action 테이블에 기록
+    fun markAsHunted(prId: String, hunterId: String, actionType: String = "HUNT"): HunterActionType {
         val action = hunterActionRepository.save(
             HunterActionEntity(
                 prId = prId,
-                hunterName = hunterName,
+                hunterId = hunterId,
+                actionType = actionType,
             )
         )
-
         return HunterActionType(
             id = action.id,
             prId = action.prId,
-            hunterName = action.hunterName,
-            huntedAt = action.huntedAt.toString(),
+            hunterId = action.hunterId,
+            actionType = action.actionType,
+            createdAt = action.createdAt.toString(),
         )
     }
 }
