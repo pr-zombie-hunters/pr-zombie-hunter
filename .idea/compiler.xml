@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CompilerConfiguration">
+    <bytecodeTargetLevel target="17" />
+  </component>
+  <component name="JavacSettings">
+    <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="pr-zombie-hunter.collector" options="-parameters" />
+      <module name="pr-zombie-hunter.collector.main" options="-parameters" />
+      <module name="pr-zombie-hunter.collector.test" options="-parameters" />
+      <module name="pr-zombie-hunter.gateway" options="-parameters" />
+      <module name="pr-zombie-hunter.gateway.main" options="-parameters" />
+      <module name="pr-zombie-hunter.gateway.test" options="-parameters" />
+      <module name="pr-zombie-hunter.grader" options="-parameters" />
+      <module name="pr-zombie-hunter.grader.main" options="-parameters" />
+      <module name="pr-zombie-hunter.grader.test" options="-parameters" />
+      <module name="pr-zombie-hunter.graphql-service" options="-parameters" />
+      <module name="pr-zombie-hunter.graphql-service.main" options="-parameters" />
+      <module name="pr-zombie-hunter.graphql-service.test" options="-parameters" />
+      <module name="pr-zombie-hunter.notifier" options="-parameters" />
+      <module name="pr-zombie-hunter.notifier.main" options="-parameters" />
+      <module name="pr-zombie-hunter.notifier.test" options="-parameters" />
+    </option>
+  </component>
+</project>

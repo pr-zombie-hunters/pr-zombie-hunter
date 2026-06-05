@@ -17,6 +17,7 @@ services:
       - "8081:8081"
     depends_on:
       - mysql
+      - rabbitmq
 
   grader:
     build: ./grader
@@ -24,6 +25,9 @@ services:
       - "8082:8082"
     depends_on:
       - mysql
+      - mongodb
+      - redis
+      - rabbitmq
 
   notifier:
     build: ./notifier
@@ -31,6 +35,7 @@ services:
       - "8083:8083"
     depends_on:
       - mysql
+      - rabbitmq
 
   graphql-service:
     build: ./graphql-service
@@ -38,6 +43,9 @@ services:
       - "8084:8084"
     depends_on:
       - mysql
+      - mongodb
+      - redis
+      - rabbitmq
 
   mysql:
     image: mysql:8.0
@@ -49,5 +57,29 @@ services:
     volumes:
       - mysql-data:/var/lib/mysql
 
+  mongodb:
+    image: mongo:7
+    environment:
+      MONGO_INITDB_DATABASE: damage_log
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
 volumes:
   mysql-data:
+  mongo-data:
+  redis-data:
