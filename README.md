@@ -43,13 +43,14 @@ pr-zombie-hunter/
 - JDK 17
 - Docker Desktop (MySQL 및 Redis 실행용)
 
-### MySQL 실행
+### MySQL 및 Redis 실행
 
 ```bash
-docker compose up mysql -d
+docker compose up mysql redis -d
 ```
 
-> 로컬에 MySQL이 이미 설치된 경우 포트 충돌을 피하기 위해 `3307`로 설정되어 있습니다.
+> - 로컬에 MySQL이 이미 설치된 경우 포트 충돌을 피하기 위해 MySQL 포트는 `3307`로 설정되어 있습니다.
+> - Redis는 기본 포트인 `6379`로 실행됩니다.
 
 ### 환경변수 설정
 
