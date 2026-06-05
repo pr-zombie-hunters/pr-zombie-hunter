@@ -1,0 +1,32 @@
+enum ZombieGrade {
+    NONE
+    SEEDLING
+    ZOMBIE
+    BOSS
+}
+
+type PullRequest {
+    id: String!
+    title: String!
+    author: String!
+    zombieGrade: ZombieGrade!
+    staleDays: Int!
+    lastActivityAt: String!
+}
+
+type HunterAction {
+    id: ID!
+    prId: String!
+    hunterId: String!
+    actionType: String!
+    createdAt: String!
+}
+
+type Query {
+    pullRequests(zombieGrade: ZombieGrade): [PullRequest!]!
+    pullRequest(id: String!): PullRequest
+}
+
+type Mutation {
+    markAsHunted(prId: String!, hunterId: String!, actionType: String): HunterAction!
+}
