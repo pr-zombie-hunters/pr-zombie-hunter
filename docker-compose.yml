@@ -4,7 +4,7 @@ services:
   gateway:
     build: ./gateway
     ports:
-      - "8080:8080"
+      - "9080:8080"
     depends_on:
       - collector
       - grader
@@ -13,29 +13,21 @@ services:
 
   collector:
     build: ./collector
-    ports:
-      - "8081:8081"
     depends_on:
       - mysql
 
   grader:
     build: ./grader
-    ports:
-      - "8082:8082"
     depends_on:
       - mysql
 
   notifier:
     build: ./notifier
-    ports:
-      - "8083:8083"
     depends_on:
       - mysql
 
   graphql-service:
     build: ./graphql-service
-    ports:
-      - "8084:8084"
     depends_on:
       - mysql
 
@@ -46,6 +38,7 @@ services:
       MYSQL_DATABASE: zombie_hunter
     ports:
       - "3307:3306"
+
     volumes:
       - mysql-data:/var/lib/mysql
     healthcheck:
