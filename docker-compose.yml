@@ -4,7 +4,7 @@ services:
   gateway:
     build: ./gateway
     ports:
-      - "8080:8080"
+      - "8090:8080"
     depends_on:
       - collector
       - grader
@@ -63,6 +63,7 @@ services:
       DB_URL: jdbc:mysql://mysql:3306/zombie_hunter?serverTimezone=Asia/Seoul
       DB_USERNAME: root
       DB_PASSWORD: root
+      SPRING_GRAPHQL_GRAPHIQL_ENABLED: "true"
 
   mysql:
     image: mysql:8.0

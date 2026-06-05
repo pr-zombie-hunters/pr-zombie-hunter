@@ -1,20 +1,20 @@
 package com.zombie.graphql.mutation
 
-import com.expediagroup.graphql.server.operations.Mutation
 import com.zombie.graphql.domain.HunterActionType
 import com.zombie.graphql.entity.HunterActionEntity
 import com.zombie.graphql.entity.HunterActionJpaRepository
 import com.zombie.graphql.entity.PullRequestJpaRepository
-import org.springframework.stereotype.Component
+import org.springframework.graphql.data.method.annotation.Argument
+import org.springframework.graphql.data.method.annotation.MutationMapping
+import org.springframework.stereotype.Controller
 
-@Component
+@Controller
 class HunterMutation(
     private val hunterActionRepository: HunterActionJpaRepository,
     private val pullRequestRepository: PullRequestJpaRepository,
-) : Mutation {
-
-    // 처치완료 - hunter_action 테이블에 기록
-    fun markAsHunted(prId: String, hunterId: String, actionType: String = "HUNT"): HunterActionType {
+) {
+    @MutationMapping
+    fun markAsHunted(@Argument prId: String, @Argument hunterId: String, @Argument actionType: String = "HUNT"): HunterActionType {
         val action = hunterActionRepository.save(
             HunterActionEntity(
                 prId = prId,

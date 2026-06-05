@@ -1,20 +1,20 @@
 package com.zombie.graphql.query
 
-import com.expediagroup.graphql.server.operations.Query
 import com.zombie.graphql.domain.PullRequestType
 import com.zombie.graphql.domain.ZombieGrade
 import com.zombie.graphql.entity.PullRequestJpaRepository
-import org.springframework.stereotype.Component
+import org.springframework.graphql.data.method.annotation.Argument
+import org.springframework.graphql.data.method.annotation.QueryMapping
+import org.springframework.stereotype.Controller
 import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
 
-@Component
+@Controller
 class PullRequestQuery(
     private val pullRequestRepository: PullRequestJpaRepository,
-) : Query {
-
-    // 전체 조회 또는 등급 필터 조회
-    fun pullRequests(zombieGrade: ZombieGrade? = null): List<PullRequestType> {
+) {
+    @QueryMapping
+    fun pullRequests(@Argument zombieGrade: ZombieGrade?): List<PullRequestType> {
         val entities = if (zombieGrade == null) {
             pullRequestRepository.findAll()
         } else {
@@ -23,8 +23,8 @@ class PullRequestQuery(
         return entities.map { it.toType() }
     }
 
-    // 단건 조회 - 없으면 null 반환
-    fun pullRequest(id: String): PullRequestType? {
+    @QueryMapping
+    fun pullRequest(@Argument id: String): PullRequestType? {
         return pullRequestRepository.findById(id).orElse(null)?.toType()
     }
 
