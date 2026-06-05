@@ -1,93 +1,82 @@
 package com.zombie.grader.service
 
-import com.zombie.grader.domain.ZombieGrade
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 
+class FakeMonsterRedisRepository : MonsterRedisRepository {
+    val currentHpCache = mutableMapOf<String, Long>()
+    val backupHpCache = mutableMapOf<String, Long>()
+
+    override fun saveCurrentHp(prId: String, hp: Long) { currentHpCache[prId] = hp }
+    override fun saveHpBeforeDefeat(prId: String, hp: Long) { backupHpCache[prId] = hp }
+    override fun getHpBeforeDefeat(prId: String): Long? = backupHpCache[prId]
+}
+
 class GraderServiceTest {
+    private lateinit var fakeRedis: FakeMonsterRedisRepository
+    private lateinit var graderService: GraderService
 
-    // 테스트를 수행할 Grader 서비스 객체를 준비합니다.
-    private val graderService = GraderService()
-
-    @Test
-    @DisplayName("[SCRUM-72] PR 방치 3일 미만일 때 -> 등급 없음")
-    fun `evaluateGrade returns NONE when staleDays is less than 3`() {
-        // Given: 방치된 지 2일 된 PR이 주어졌을 때
-        val pr = PullRequestInfo(isMerged = false, staleDays = 2, currentGrade = ZombieGrade.NONE)
-        
-        // When: 등급 판정을 실행하면
-        val result = graderService.evaluateGrade(pr)
-        
-        // Then: 등급은 NONE이고, 알림은 가지 않아야 합니다.
-        assertEquals(ZombieGrade.NONE, result.updatedGrade)
-        assertEquals(false, result.isNotified)
+    @BeforeEach
+    fun setUp() {
+        fakeRedis = FakeMonsterRedisRepository()
+        graderService = GraderService(fakeRedis)
     }
 
     @Test
-    @DisplayName("[SCRUM-101] PR 방치 정확히 3일일 때 -> 새싹좀비(SEEDLING)")
-    fun `evaluateGrade returns SEEDLING when staleDays is 3`() {
-        // Given: 방치 일수가 정확히 3일인 PR
-        val pr = PullRequestInfo(isMerged = false, staleDays = 3, currentGrade = ZombieGrade.NONE)
-        
-        // When: 등급 판정 실행
-        val result = graderService.evaluateGrade(pr)
-        
-        // Then: 새싹좀비(SEEDLING) 등급을 받아야 합니다.
-        assertEquals(ZombieGrade.SEEDLING, result.updatedGrade)
+    @DisplayName("[Small Test] 6시간 경과 시 HP가 2배로 성장하고 Redis에 캐싱된다")
+    fun `growMonster should double HP and cache to Redis`() {
+        // [Given] PR이 생성되어 초기 체력이 10,000인 상태의 몬스터가 존재합니다.
+        val monster = ZombieMonster(prId = "PR-1", currentHp = 10000L)
+
+        // [When] 6시간 주기의 성장 스케줄러가 동작하여 growMonster()가 호출됩니다.
+        val result = graderService.growMonster(monster)
+
+        // [Then] 몬스터의 반환된 HP는 2배인 20,000으로 업데이트되고, Redis 현재 상태 캐시에 정상 저장됩니다.
+        assertEquals(20000L, result.updatedHp)
+        assertEquals(20000L, fakeRedis.currentHpCache["PR-1"])
     }
 
     @Test
-    @DisplayName("[SCRUM-102] PR 방치 정확히 7일일 때 -> 좀비(ZOMBIE) 승격")
-    fun `evaluateGrade returns ZOMBIE when staleDays is 7`() {
-        // Given: 방치 일수가 7일인 새싹좀비 PR
-        val pr = PullRequestInfo(isMerged = false, staleDays = 7, currentGrade = ZombieGrade.SEEDLING)
-        
-        // When: 등급 판정 실행
-        val result = graderService.evaluateGrade(pr)
-        
-        // Then: 일반 좀비(ZOMBIE)로 승격되어야 합니다.
-        assertEquals(ZombieGrade.ZOMBIE, result.updatedGrade)
+    @DisplayName("[Medium Test] 유니크 코멘트만 5000 데미지를 적용한다")
+    fun `applyDamage reduces HP for unique comments only`() {
+        // [Given] 2번의 성장을 거쳐 현재 체력이 40,000인 몬스터가 존재합니다.
+        val monster = ZombieMonster(prId = "PR-2", currentHp = 40000L)
+
+        // [When - 1단계] 동일 유저 중복 코멘트(isUniqueComment = false)로 데미지 로직이 호출됩니다.
+        graderService.applyDamage(monster, isUniqueComment = false)
+
+        // [Then - 1단계] 중복 코멘트이므로 데미지가 적용되지 않고 40,000 체력이 유지됩니다.
+        assertEquals(40000L, monster.currentHp)
+
+        // [When - 2단계] 새로운 유저 코멘트(isUniqueComment = true)로 데미지 로직이 다시 호출됩니다.
+        graderService.applyDamage(monster, isUniqueComment = true)
+
+        // [Then - 2단계] 유니크 코멘트이므로 5,000 데미지가 깎여 35,000으로 업데이트되고 Redis 캐시에 동기화됩니다.
+        assertEquals(35000L, monster.currentHp)
+        assertEquals(35000L, fakeRedis.currentHpCache["PR-2"])
     }
 
     @Test
-    @DisplayName("[SCRUM-73] PR 방치 14일 이상일 때 -> 보스좀비(BOSS) 승격 및 알림")
-    fun `evaluateGrade returns BOSS and notification flag when staleDays is 14`() {
-        // Given: 방치 일수가 14일인 일반 좀비 PR
-        val pr = PullRequestInfo(isMerged = false, staleDays = 14, currentGrade = ZombieGrade.ZOMBIE)
+    @DisplayName("[Large Test] PR 머지 시 처치(백업)되고, Revert 시 복원된다")
+    fun `handlePrStatusChange backs up HP on MERGE and restores on REVERT`() {
+        // [Given] 방치되어 체력이 80,000까지 팽창한 몬스터(PR)가 존재합니다.
+        val monster = ZombieMonster(prId = "PR-3", currentHp = 80000L)
         
-        // When: 등급 판정 실행
-        val result = graderService.evaluateGrade(pr)
-        
-        // Then: 보스좀비(BOSS)로 승격되고, 전체 알림(true)이 발생해야 합니다.
-        assertEquals(ZombieGrade.BOSS, result.updatedGrade)
-        assertEquals(true, result.isNotified)
-    }
+        // [When - 1단계] PR 상태가 MERGED로 변경되는 이벤트가 수신됩니다.
+        graderService.handlePrStatusChange(monster, PrStatus.MERGED)
 
-    @Test
-    @DisplayName("[SCRUM-103] 이미 보스좀비(BOSS)인 경우 -> 등급 변화 없음 (알림 미발송)")
-    fun `evaluateGrade ignores PR if already BOSS`() {
-        // Given: 이미 최고 등급(보스좀비)을 받은 PR이 15일째 방치 중일 때
-        val pr = PullRequestInfo(isMerged = false, staleDays = 15, currentGrade = ZombieGrade.BOSS)
-        
-        // When: 스케줄러가 등급 판정을 한 번 더 실행하면
-        val result = graderService.evaluateGrade(pr)
-        
-        // Then: 중복 승격 방지를 위해 등급은 그대로 유지되고, 알림도 다시 가지 않습니다.
-        assertEquals(ZombieGrade.BOSS, result.updatedGrade)
-        assertEquals(false, result.isNotified)
-    }
+        // [Then - 1단계] 남은 체력(80,000)은 즉시 0이 되며 몬스터는 처치(isDefeated = true)되고, 소멸 직전 체력인 80,000이 Redis 백업 공간에 저장됩니다.
+        assertEquals(0L, monster.currentHp)
+        assertEquals(true, monster.isDefeated)
+        assertEquals(80000L, fakeRedis.backupHpCache["PR-3"])
 
-    @Test
-    @DisplayName("[SCRUM-104] PR이 머지된 상태일 때 -> 판정 대상에서 제외")
-    fun `evaluateGrade ignores PR if already merged`() {
-        // Given: 10일 방치되었지만 이미 머지(isMerged = true)가 완료된 PR
-        val pr = PullRequestInfo(isMerged = true, staleDays = 10, currentGrade = ZombieGrade.SEEDLING)
-        
-        // When: 스케줄러가 등급 판정을 시도하면
-        val result = graderService.evaluateGrade(pr)
-        
-        // Then: 판정 대상에서 완전히 제외되어 기존 등급이 그대로 유지됩니다.
-        assertEquals(ZombieGrade.SEEDLING, result.updatedGrade) 
+        // [When - 2단계] 해당 PR이 REVERTED 되는 이벤트가 수신됩니다.
+        graderService.handlePrStatusChange(monster, PrStatus.REVERTED)
+
+        // [Then - 2단계] Redis 백업 공간에서 80,000을 복원하고 몬스터는 부활(isDefeated = false)합니다.
+        assertEquals(80000L, monster.currentHp)
+        assertEquals(false, monster.isDefeated)
     }
 }
