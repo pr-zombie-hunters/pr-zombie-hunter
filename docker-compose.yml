@@ -51,6 +51,7 @@ services:
       DB_PASSWORD: root
       MAIL_USERNAME: ${MAIL_USERNAME}
       MAIL_PASSWORD: ${MAIL_PASSWORD}
+      NOTIFY_RECIPIENTS: ${NOTIFY_RECIPIENTS}
 
   graphql-service:
     build: ./graphql-service

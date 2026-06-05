@@ -8,7 +8,6 @@ data class NotifyRequest(
     val prUrl: String,
     val staleDays: Long,
     val grade: String,
-    val recipientEmail: String,
 )
 
 @RestController
@@ -24,7 +23,6 @@ class NotifierController(
             prUrl = request.prUrl,
             staleDays = request.staleDays,
             grade = request.grade,
-            recipientEmail = request.recipientEmail,
         )
         return mapOf("status" to "ok")
     }

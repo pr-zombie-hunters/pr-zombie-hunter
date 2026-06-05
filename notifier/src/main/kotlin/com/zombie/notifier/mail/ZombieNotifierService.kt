@@ -3,17 +3,21 @@ package com.zombie.notifier.mail
 import com.zombie.notifier.domain.Notification
 import com.zombie.notifier.domain.NotificationRepository
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 
 @Service
 class ZombieNotifierService(
     private val mailService: MailService,
     private val notificationRepository: NotificationRepository,
+    @Value("\${notifier.mail.recipients}") private val recipientsRaw: String,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
-
-    // 알림 발송 대상 등급 (NONE, SEEDLING 미만은 발송 안 함 → SEEDLING부터 발송)
     private val notifiableGrades = setOf("SEEDLING", "ZOMBIE", "BOSS")
+
+    // 쉼표로 구분된 이메일 목록 파싱
+    private val recipients: List<String>
+        get() = recipientsRaw.split(",").map { it.trim() }.filter { it.isNotEmpty() }
 
     fun notify(
         prId: String,
@@ -21,7 +25,6 @@ class ZombieNotifierService(
         prUrl: String,
         staleDays: Long,
         grade: String,
-        recipientEmail: String,
     ) {
         // 알림 대상 등급이 아니면 스킵
         if (grade !in notifiableGrades) {
@@ -35,23 +38,20 @@ class ZombieNotifierService(
             return
         }
 
-        // 등급별 제목/본문 생성
         val subject = ZombieMailTemplate.subject(grade, prTitle)
         val body = ZombieMailTemplate.body(grade, prTitle, prId, staleDays, prUrl)
 
-        // 이메일 발송
-        mailService.sendZombieAlert(
-            to = recipientEmail,
-            subject = subject,
-            body = body,
-        )
-        log.info("이메일 발송 완료 - PR: $prId, 등급: $grade, 수신자: $recipientEmail")
+        // 팀원 전원에게 발송
+        recipients.forEach { email ->
+            mailService.sendZombieAlert(to = email, subject = subject, body = body)
+            log.info("이메일 발송 완료 - PR: $prId, 등급: $grade, 수신자: $email")
+        }
 
-        // 발송 이력 저장
+        // 발송 이력 저장 (대표로 첫 번째 수신자 기록)
         notificationRepository.save(
             Notification(
                 pullRequestId = prId,
-                recipientEmail = recipientEmail,
+                recipientEmail = recipients.joinToString(","),
                 grade = grade,
             )
         )

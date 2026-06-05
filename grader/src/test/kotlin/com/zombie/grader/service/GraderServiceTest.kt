@@ -5,6 +5,12 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 
+/**
+ * 테스트 크기: Small
+ * - 외부 의존성 없음
+ * - 순수 비즈니스 로직만 검증
+ * - DB, 네트워크 연결 불필요
+ */
 class GraderServiceTest {
 
     // 테스트를 수행할 Grader 서비스 객체를 준비합니다.
