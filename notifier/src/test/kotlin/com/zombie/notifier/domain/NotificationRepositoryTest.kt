@@ -3,42 +3,40 @@ package com.zombie.notifier.domain
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.extensions.spring.SpringExtension
 import io.kotest.matchers.shouldBe
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
+import org.springframework.transaction.annotation.Transactional
 
 /**
  * 테스트 대상: NotificationRepository
  * 테스트 크기: Medium (통합 테스트)
  *
  * [Medium 테스트란?]
- * - 실제 DB 연결 (H2 인메모리 DB 사용 — MySQL 대신 테스트용)
- * - Spring JPA 컨텍스트 로드 (@DataJpaTest)
+ * - 실제 DB 연결 (H2 인메모리 DB — MySQL 대신 테스트용)
+ * - Spring 전체 컨텍스트 로드 (@SpringBootTest)
  * - 실제 SQL이 실행되고 결과를 검증
  * - Small보다 느리지만 실제 DB 동작을 확인할 수 있음
- *
- * [H2 인메모리 DB란?]
- * - 테스트 실행 시 메모리에 DB를 생성하고 테스트 끝나면 사라짐
- * - MySQL 없이도 JPA/SQL 로직 검증 가능
- * - 테스트 간 데이터가 격리됨
  *
  * [이 테스트가 검증하는 것]
  * 1. Notification을 저장하면 실제로 DB에 저장되는지
  * 2. existsByPullRequestIdAndGrade()가 정확히 동작하는지
  * 3. 다른 PR이나 다른 이벤트 타입은 구분되는지
  */
-@DataJpaTest
+@SpringBootTest
 @ActiveProfiles("test")
-class NotificationRepositoryTest(
-    private val notificationRepository: NotificationRepository,
-) : DescribeSpec({
+@Transactional
+class NotificationRepositoryTest : DescribeSpec({
 
     extensions(SpringExtension)
+
+    @Autowired
+    lateinit var notificationRepository: NotificationRepository
 
     describe("NotificationRepository") {
 
         /**
          * [테스트 그룹 1] 저장 및 조회
-         * - save() 후 실제 DB에 저장됐는지 확인
          */
         context("저장 및 조회") {
 
@@ -53,7 +51,7 @@ class NotificationRepositoryTest(
                 // When: save()를 호출하면
                 val saved = notificationRepository.save(notification)
 
-                // Then: id가 부여되고 DB에 저장된다
+                // Then: id가 부여되고 값이 정확히 저장된다
                 saved.id shouldBe 1L
                 saved.pullRequestId shouldBe "pr-zombie-hunters/repo#42"
                 saved.grade shouldBe "hp_updated"
@@ -62,7 +60,6 @@ class NotificationRepositoryTest(
 
         /**
          * [테스트 그룹 2] 중복 발송 방지 쿼리 검증
-         * - existsByPullRequestIdAndGrade()의 실제 SQL 동작 검증
          */
         context("중복 발송 방지 쿼리") {
 
