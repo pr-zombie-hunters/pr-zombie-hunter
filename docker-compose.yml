@@ -9,7 +9,7 @@ services:
       - collector
       - grader
       - notifier
-      - graphql-service
+      - api-service
 
   collector:
     build: ./collector
@@ -53,8 +53,8 @@ services:
       MAIL_PASSWORD: ${MAIL_PASSWORD}
       NOTIFY_RECIPIENTS: ${NOTIFY_RECIPIENTS}
 
-  graphql-service:
-    build: ./graphql-service
+  api-service:
+    build: ./api-service
     ports:
       - "8084:8084"
     depends_on:
@@ -64,7 +64,6 @@ services:
       DB_URL: jdbc:mysql://mysql:3306/zombie_hunter?serverTimezone=Asia/Seoul
       DB_USERNAME: root
       DB_PASSWORD: root
-      SPRING_GRAPHQL_GRAPHIQL_ENABLED: "true"
 
   mysql:
     image: mysql:8.0

@@ -8,5 +8,5 @@ include(
     "collector",
     "grader",
     "notifier",
-    "graphql-service"
+    "api-service"
 )
