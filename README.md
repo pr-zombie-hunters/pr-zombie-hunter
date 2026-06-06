@@ -88,34 +88,7 @@ RabbitMQ는 서비스와 서비스 사이에서 메시지를 주고받는 것을
 
 ### 3-3. 전체 아키텍처 다이어그램
 
-```
-[GitHub Webhook / API]          [개발팀 / 팀 리더]
-        │                              │ HTTPS
-        └──────────────────────────────┘
-                        │
-              API Gateway (:8080)
-         경로 기반 라우팅 · JWT 인증 · Rate Limit
-                        │
-        ┌───────┬────────┬────────┬────────┐
-        │       │        │        │        │
-  Collector  Grader  Notifier  API 서비스
-   :8081     :8082    :8083     :8084
-  GitHub     HP×2    이메일     REST
-  Webhook   6시간    1시간     대시보드
-  수집      배치     발송      데이터
-
-        ↑↓ publish / consume
-
-           RabbitMQ (:5672)
-    pr.events · monster.events · damage.events
-
-                    │
-     ┌──────┬───────┼──────┐
-     │      │       │      │
-   MySQL  MongoDB  Redis  Gmail SMTP
-   도메인  damage  HP캐시  1시간
-   데이터   _log   동시성   이메일
-```
+![PR Zombie Hunter 시스템 아키텍처](./docs/images/system_achitecture.png)
 
 
 ## 4. DB 스키마
