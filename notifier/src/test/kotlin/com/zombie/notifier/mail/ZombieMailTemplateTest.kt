@@ -8,15 +8,6 @@ import io.kotest.matchers.string.shouldStartWith
 /**
  * 테스트 대상: ZombieMailTemplate
  * 테스트 크기: Small (단위 테스트)
- *
- * [Small 테스트란?]
- * - 외부 의존성 전혀 없음 (순수 함수 테스트)
- * - Mock 객체도 필요 없음
- * - 문자열 생성 로직만 검증 → 가장 빠르고 단순한 테스트
- *
- * [이 테스트가 검증하는 것]
- * 1. 이벤트 타입별 이메일 제목이 올바른 이모지로 시작하는지
- * 2. 이메일 본문에 HP, 코멘트 수, PR 링크 등 핵심 정보가 포함되는지
  */
 class ZombieMailTemplateTest : DescribeSpec({
 

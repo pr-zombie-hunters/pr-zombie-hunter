@@ -11,20 +11,8 @@ import org.springframework.mail.javamail.JavaMailSender
 /**
  * 테스트 대상: ZombieNotifierService
  * 테스트 크기: Small (단위 테스트)
- *
- * [Small 테스트란?]
- * - 실제 RabbitMQ, Gmail, DB 없이 Mock으로 대체
- * - ZombieNotifierService 내부 분기 로직만 검증
- * - 실행 속도 빠름 (수 밀리초)
- *
- * [이 테스트가 검증하는 것]
- * 1. 수신자 목록이 비어있으면 발송하지 않는다
- * 2. 이미 발송 이력이 있으면 중복 발송하지 않는다
- * 3. 정상 조건이면 수신자 전원에게 발송하고 이력을 저장한다
- * 4. 수신자가 여러 명이면 모두에게 발송한다
  */
 class ZombieNotifierServiceTest : DescribeSpec({
-
     // ── 테스트 준비 ──────────────────────────────────────────
     val mockMailSender = mockk<JavaMailSender>(relaxed = true)
     val mockNotificationRepository = mockk<NotificationRepository>(relaxed = true)
@@ -185,4 +173,5 @@ class ZombieNotifierServiceTest : DescribeSpec({
             }
         }
     }
+
 })

@@ -16,12 +16,6 @@ import org.springframework.mail.javamail.JavaMailSender
  * - JavaMailSender → Mock으로 대체 (실제 이메일 발송 안 함)
  * - NotificationRepository → Mock으로 대체 (실제 DB 조회 안 함)
  * - 오직 MailService 내부 로직만 검증
- * - 빠르게 실행됨 (수 밀리초)
- *
- * [이 테스트가 검증하는 것]
- * 1. 이메일 발송 요청 시 JavaMailSender가 실제로 호출되는지
- * 2. 중복 발송 이력이 있을 때 발송하지 않는지
- * 3. 발송 이력이 없을 때 정상 발송하는지
  */
 class MailServiceTest : DescribeSpec({
 
