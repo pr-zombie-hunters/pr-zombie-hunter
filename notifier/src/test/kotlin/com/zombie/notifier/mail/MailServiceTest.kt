@@ -79,8 +79,6 @@ class MailServiceTest : DescribeSpec({
         /**
          * [테스트 그룹 2] 중복 발송 차단
          * - 같은 PR + 같은 등급으로 이미 발송한 경우 다시 보내지 않는지 검증
-         * - NotificationRepository.existsByPullRequestIdAndGrade()의 반환값에 따라
-         *   발송 여부가 달라지는 로직 검증
          */
         context("중복 발송 차단") {
 
