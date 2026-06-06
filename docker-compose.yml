@@ -45,6 +45,8 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     environment:
       DB_URL: jdbc:mysql://mysql:3306/zombie_hunter?serverTimezone=Asia/Seoul
       DB_USERNAME: root
@@ -52,6 +54,7 @@ services:
       MAIL_USERNAME: ${MAIL_USERNAME}
       MAIL_PASSWORD: ${MAIL_PASSWORD}
       NOTIFY_RECIPIENTS: ${NOTIFY_RECIPIENTS}
+      RABBITMQ_HOST: rabbitmq
 
   api-service:
     build: ./api-service
@@ -64,6 +67,20 @@ services:
       DB_URL: jdbc:mysql://mysql:3306/zombie_hunter?serverTimezone=Asia/Seoul
       DB_USERNAME: root
       DB_PASSWORD: root
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   mysql:
     image: mysql:8.0

@@ -1,54 +1,63 @@
 package com.zombie.notifier.mail
 
+import com.zombie.notifier.messaging.MonsterEvent
+
+/**
+ * HP 몬스터 시스템 기반 이메일 템플릿
+ *
+ * 이벤트 타입별 이메일 내용:
+ * - hp_updated : 6시간마다 HP 성장 현황 알림
+ * - defeated   : 몬스터 처치 완료 알림
+ * - revived    : Revert로 몬스터 부활 알림
+ */
 object ZombieMailTemplate {
 
-    fun subject(grade: String, prTitle: String): String = when (grade) {
-        "SEEDLING" -> "[🌱 새싹 좀비] $prTitle — 슬슬 신경 써주세요"
-        "ZOMBIE"   -> "[🧟 좀비 PR] $prTitle — 방치된 지 7일이 넘었습니다"
-        "BOSS"     -> "[💀 보스 좀비 발견!] $prTitle — 즉시 처치가 필요합니다"
-        else       -> "[PR 알림] $prTitle"
+    fun subject(event: MonsterEvent): String = when (event.eventType) {
+        "hp_updated" -> "[🧟 좀비 PR] ${event.prTitle} — HP ${event.currentHp} (코멘트 ${event.requiredComments}개 필요)"
+        "defeated"   -> "[🎉 처치 완료] ${event.prTitle} — 팀워크로 처치했습니다!"
+        "revived"    -> "[💀 몬스터 부활!] ${event.prTitle} — Revert로 좀비가 되살아났습니다"
+        else         -> "[PR 알림] ${event.prTitle}"
     }
 
-    fun body(grade: String, prTitle: String, prId: String, staleDays: Long, prUrl: String): String = when (grade) {
-        "SEEDLING" -> """
-            |[새싹 좀비 알림]
+    fun body(event: MonsterEvent): String = when (event.eventType) {
+        "hp_updated" -> """
+            |[🧟 좀비 PR 현황]
             |
-            |PR이 ${staleDays}일 동안 방치되고 있습니다. 아직 초기 단계이지만 리뷰를 서둘러 주세요!
+            |방치된 PR이 몬스터로 성장하고 있습니다!
             |
-            |• PR: $prTitle
-            |• ID: $prId
-            |• 방치 기간: ${staleDays}일
-            |• 링크: $prUrl
+            |• PR: ${event.prTitle}
+            |• 링크: ${event.prUrl}
+            |• 현재 HP: ${event.currentHp} / ${event.maxHp}
+            |• 처치까지 필요한 코멘트: ${event.requiredComments}개
             |
-            |방치 기간이 7일을 넘으면 좀비 등급으로 승격됩니다.
+            |지금 코멘트를 달아 팀원들과 함께 처치하세요!
+            |6시간마다 HP가 2배로 증가합니다. ⚠️
         """.trimMargin()
 
-        "ZOMBIE" -> """
-            |[좀비 PR 경고]
+        "defeated" -> """
+            |[🎉 몬스터 처치 완료!]
             |
-            |PR이 ${staleDays}일 동안 방치되어 좀비 상태가 되었습니다. 빠른 리뷰가 필요합니다!
+            |팀원들의 협력으로 좀비 PR을 처치했습니다!
             |
-            |• PR: $prTitle
-            |• ID: $prId
-            |• 방치 기간: ${staleDays}일
-            |• 링크: $prUrl
+            |• PR: ${event.prTitle}
+            |• 링크: ${event.prUrl}
             |
-            |방치 기간이 14일을 넘으면 보스 좀비로 승격되며 전체 팀에 알림이 발송됩니다.
+            |수고하셨습니다! 다음 좀비도 함께 사냥해요 🏹
         """.trimMargin()
 
-        "BOSS" -> """
-            |[🚨 보스 좀비 긴급 알림]
+        "revived" -> """
+            |[💀 긴급! 몬스터 부활]
             |
-            |PR이 ${staleDays}일 동안 방치되어 보스 좀비가 되었습니다! 즉시 처치가 필요합니다!
+            |Revert로 인해 처치했던 PR이 다시 살아났습니다!
             |
-            |• PR: $prTitle
-            |• ID: $prId
-            |• 방치 기간: ${staleDays}일
-            |• 링크: $prUrl
+            |• PR: ${event.prTitle}
+            |• 링크: ${event.prUrl}
+            |• 부활 HP: ${event.currentHp}
+            |• 처치까지 필요한 코멘트: ${event.requiredComments}개
             |
-            |더 이상 방치하면 팀 전체의 개발 속도에 영향을 미칩니다. 지금 바로 리뷰해주세요!
+            |즉시 대응이 필요합니다! ⚡
         """.trimMargin()
 
-        else -> "PR $prTitle 알림"
+        else -> "PR ${event.prTitle} 알림"
     }
 }

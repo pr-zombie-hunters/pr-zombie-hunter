@@ -1,5 +1,6 @@
 package com.zombie.notifier.mail
 
+import com.zombie.notifier.messaging.MonsterEvent
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldStartWith
@@ -11,115 +12,120 @@ import io.kotest.matchers.string.shouldStartWith
  * [Small 테스트란?]
  * - 외부 의존성 전혀 없음 (순수 함수 테스트)
  * - Mock 객체도 필요 없음
- * - ZombieMailTemplate의 문자열 생성 로직만 검증
- * - 가장 빠르고 가장 단순한 테스트
+ * - 문자열 생성 로직만 검증 → 가장 빠르고 단순한 테스트
  *
  * [이 테스트가 검증하는 것]
- * 1. 등급별 이메일 제목이 올바른 이모지와 문구로 시작하는지
- * 2. 이메일 본문에 PR 정보(제목, ID, 방치일수, 링크)가 포함되는지
+ * 1. 이벤트 타입별 이메일 제목이 올바른 이모지로 시작하는지
+ * 2. 이메일 본문에 HP, 코멘트 수, PR 링크 등 핵심 정보가 포함되는지
  */
 class ZombieMailTemplateTest : DescribeSpec({
+
+    // 공통 샘플 이벤트
+    val baseEvent = MonsterEvent(
+        eventType = "hp_updated",
+        prId = "pr-zombie-hunters/repo#42",
+        prTitle = "feat/auth-refactor",
+        prUrl = "https://github.com/pr-zombie-hunters/repo/pull/42",
+        currentHp = 20000,
+        maxHp = 40000,
+        requiredComments = 4,
+    )
 
     describe("ZombieMailTemplate") {
 
         /**
          * [테스트 그룹 1] 이메일 제목 생성
-         * - 등급마다 다른 이모지와 문구가 붙어야 함
-         * - 제목에 PR 제목이 포함되어야 함
+         * - 이벤트 타입마다 다른 이모지와 문구가 붙어야 함
+         * - 제목에 PR 제목과 HP 정보가 포함되어야 함
          */
         context("이메일 제목 생성") {
 
-            it("SEEDLING 등급 제목은 새싹 이모지로 시작한다") {
-                // Given: SEEDLING 등급과 PR 제목이 주어졌을 때
-                val grade = "SEEDLING"
-                val prTitle = "fix/button-color"
+            it("hp_updated 이벤트 제목은 좀비 이모지로 시작하고 HP 정보를 포함한다") {
+                // Given: HP가 성장한 hp_updated 이벤트가 주어졌을 때
+                val event = baseEvent.copy(eventType = "hp_updated")
 
                 // When: subject()를 호출하면
-                val result = ZombieMailTemplate.subject(grade, prTitle)
+                val result = ZombieMailTemplate.subject(event)
 
-                // Then: 새싹 이모지로 시작하고 PR 제목이 포함된다
-                result shouldStartWith "[🌱 새싹 좀비]"
-                result shouldContain prTitle
-            }
-
-            it("ZOMBIE 등급 제목은 좀비 이모지로 시작한다") {
-                // Given: ZOMBIE 등급과 PR 제목이 주어졌을 때
-                val grade = "ZOMBIE"
-                val prTitle = "feat/login"
-
-                // When: subject()를 호출하면
-                val result = ZombieMailTemplate.subject(grade, prTitle)
-
-                // Then: 좀비 이모지로 시작하고 PR 제목이 포함된다
+                // Then: 좀비 이모지로 시작하고 HP와 PR 제목이 포함된다
                 result shouldStartWith "[🧟 좀비 PR]"
-                result shouldContain prTitle
+                result shouldContain event.prTitle
+                result shouldContain "20000"
             }
 
-            it("BOSS 등급 제목은 해골 이모지로 시작한다") {
-                // Given: BOSS 등급과 PR 제목이 주어졌을 때
-                val grade = "BOSS"
-                val prTitle = "feat/auth-refactor"
+            it("defeated 이벤트 제목은 축하 이모지로 시작한다") {
+                // Given: 처치 완료된 defeated 이벤트가 주어졌을 때
+                val event = baseEvent.copy(eventType = "defeated")
 
                 // When: subject()를 호출하면
-                val result = ZombieMailTemplate.subject(grade, prTitle)
+                val result = ZombieMailTemplate.subject(event)
+
+                // Then: 축하 이모지로 시작하고 PR 제목이 포함된다
+                result shouldStartWith "[🎉 처치 완료]"
+                result shouldContain event.prTitle
+            }
+
+            it("revived 이벤트 제목은 해골 이모지로 시작한다") {
+                // Given: Revert로 부활한 revived 이벤트가 주어졌을 때
+                val event = baseEvent.copy(eventType = "revived")
+
+                // When: subject()를 호출하면
+                val result = ZombieMailTemplate.subject(event)
 
                 // Then: 해골 이모지로 시작하고 PR 제목이 포함된다
-                result shouldStartWith "[💀 보스 좀비 발견!]"
-                result shouldContain prTitle
+                result shouldStartWith "[💀 몬스터 부활!]"
+                result shouldContain event.prTitle
             }
         }
 
         /**
          * [테스트 그룹 2] 이메일 본문 생성
-         * - 본문에 PR의 핵심 정보가 모두 포함되어야 함
-         * - 팀원이 본문만 봐도 어떤 PR인지 알 수 있어야 함
+         * - 본문에 HP, 필요 코멘트 수, PR 링크 등 핵심 정보가 모두 포함되어야 함
          */
         context("이메일 본문 생성") {
 
-            it("BOSS 등급 본문에는 PR 제목, ID, 방치일수, 링크가 모두 포함된다") {
-                // Given: BOSS 등급 PR의 정보가 주어졌을 때
-                val grade = "BOSS"
-                val prTitle = "feat/auth-refactor"
-                val prId = "pr-zombie-hunters/repo#42"
-                val staleDays = 15L
-                val prUrl = "https://github.com/pr-zombie-hunters/repo/pull/42"
-
-                // When: body()를 호출하면
-                val result = ZombieMailTemplate.body(grade, prTitle, prId, staleDays, prUrl)
-
-                // Then: PR 제목, ID, 방치일수, 링크가 모두 본문에 포함된다
-                result shouldContain prTitle
-                result shouldContain prId
-                result shouldContain "15"
-                result shouldContain prUrl
-            }
-
-            it("ZOMBIE 등급 본문에는 방치일수가 정확히 포함된다") {
-                // Given: ZOMBIE 등급 PR이 9일 방치됐을 때
-                val grade = "ZOMBIE"
-                val staleDays = 9L
-
-                // When: body()를 호출하면
-                val result = ZombieMailTemplate.body(
-                    grade, "fix/ui-glitch", "repo#10", staleDays, "https://github.com"
+            it("hp_updated 본문에는 현재 HP와 처치까지 필요한 코멘트 수가 포함된다") {
+                // Given: HP가 20000이고 처치에 4개 코멘트가 필요한 이벤트가 주어졌을 때
+                val event = baseEvent.copy(
+                    eventType = "hp_updated",
+                    currentHp = 20000,
+                    requiredComments = 4,
                 )
 
-                // Then: 방치일수 9가 본문에 포함된다
-                result shouldContain "9"
+                // When: body()를 호출하면
+                val result = ZombieMailTemplate.body(event)
+
+                // Then: 현재 HP, 필요 코멘트 수, 링크가 본문에 포함된다
+                result shouldContain "20000"
+                result shouldContain "4"
+                result shouldContain event.prUrl
             }
 
-            it("SEEDLING 등급 본문에는 7일 초과 시 좀비 승격 경고 문구가 포함된다") {
-                // Given: SEEDLING 등급 PR이 주어졌을 때
-                val grade = "SEEDLING"
+            it("hp_updated 본문에는 6시간마다 HP 2배 경고 문구가 포함된다") {
+                // Given: hp_updated 이벤트가 주어졌을 때
+                val event = baseEvent.copy(eventType = "hp_updated")
 
                 // When: body()를 호출하면
-                val result = ZombieMailTemplate.body(
-                    grade, "chore/cleanup", "repo#5", 4L, "https://github.com"
+                val result = ZombieMailTemplate.body(event)
+
+                // Then: 팀원에게 위기감을 주는 HP 성장 경고 문구가 포함된다
+                result shouldContain "6시간"
+            }
+
+            it("revived 본문에는 부활 HP와 처치까지 필요한 코멘트 수가 포함된다") {
+                // Given: HP 10000으로 부활한 revived 이벤트가 주어졌을 때
+                val event = baseEvent.copy(
+                    eventType = "revived",
+                    currentHp = 10000,
+                    requiredComments = 2,
                 )
 
-                // Then: 7일 초과 시 좀비 승격 경고 문구가 포함된다
-                //       (팀원에게 위기감을 주는 중요한 문구)
-                result shouldContain "7일"
+                // When: body()를 호출하면
+                val result = ZombieMailTemplate.body(event)
+
+                // Then: 부활 HP와 필요 코멘트 수가 본문에 포함된다
+                result shouldContain "10000"
+                result shouldContain "2"
             }
         }
     }
