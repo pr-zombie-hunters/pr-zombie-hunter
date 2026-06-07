@@ -70,23 +70,7 @@ RabbitMQ는 서비스와 서비스 사이에서 메시지를 주고받는 것을
   - 나중에 Slack 알림, 슬래시 커맨드 같은 subscriber를 추가할 때 Exchange에 바인딩만 하면 된다.
 
 
-### 3-2. Exchange / Queue 구성
-
-**Exchange: pr.events (topic)**
-- `Collector → Grader` | routing key: `pr.created` — 새 PR 수집 완료 시
-- `Collector → Grader` | routing key: `pr.closed` — PR 머지/클로즈 시
-- `Collector → Grader` | routing key: `pr.reverted` — Revert 이벤트 시
-
-**Exchange: monster.events (fanout)**
-- `Grader → Notifier` | routing key: `monster.hp_updated` — 6시간 HP 성장 완료 시
-- `Grader → Notifier` | routing key: `monster.defeated` — 처치 완료 시
-- `Grader → Notifier` | routing key: `monster.revived` — Revert 부활 시
-
-**Exchange: damage.events (direct)**
-- `Collector → Grader` | routing key: `damage.applied` — 코멘트 데미지 발생 시
-
-
-### 3-3. 전체 아키텍처 다이어그램
+### 3-2. 전체 아키텍처 다이어그램
 
 ![PR Zombie Hunter 시스템 아키텍처](./docs/images/system_achitecture.png)
 
@@ -274,7 +258,263 @@ HP는 6시간마다 2배로 커지고, 코멘트가 달릴 때마다 깎이고, 
 팀원 여러 명이 같은 PR에 동시에 코멘트를 달면, HP를 동시에 깎으려는 요청이 한꺼번에 들어온다. MySQL에서 이걸 처리하면 "둘 다 20,000을 읽고 둘 다 15,000으로 저장"하는 충돌이 생길 수 있다. Redis의 MULTI/EXEC 트랜잭션을 쓰면 HP 차감을 순서대로 원자적으로 처리해서 이 문제를 막는다.
 
 
-## 7. 팀 구성
+## 7. TDD
+
+### 7-1. 백엔드 A (Collector) — 조혜연
+
+**Collector — 중복 PR 스킵 테스트 (SCRUM-50)**
+- Given: 동일한 PR(`pr_number=42`)이 DB에 이미 저장되어 있는 상태
+- When: 같은 `pr_number=42`를 가진 Webhook 이벤트를 다시 수신
+- Then: DB의 PR 레코드 수에 변화 없음 + 중복 스킵 로그 출력
+
+**Collector — GitHub API 정상 응답 시 PR 수집**
+- Given: GitHub API가 PR 목록(`title`, `number`, `updated_at`, `state`, `html_url`)을 정상적으로 반환하는 상태
+- When: Collector가 해당 레포지토리의 PR 목록 수집 요청
+- Then: 응답받은 PR이 누락 없이 MySQL DB에 저장됨 + 저장된 PR의 `last_activity_at`이 `updated_at`과 일치
+
+**Collector — GitHub API 500 오류 처리**
+- Given: GitHub API 서버가 500 Internal Server Error를 반환하는 상태
+- When: Collector가 PR 목록 수집 요청
+- Then: Collector 서버가 종료되지 않고 에러 로그 출력 + DB에 아무것도 저장되지 않음 + 사용자에게 500 응답 반환
+
+**Collector — GitHub API Rate Limit 초과 처리**
+- Given: GitHub API 응답 헤더의 `X-RateLimit-Remaining` 값이 0인 상태 (시간당 호출 한도 초과)
+- When: Collector가 PR 목록 수집 요청
+- Then: API 호출을 중단하고 Rate Limit 경고 로그 출력 + DB에 아무것도 저장되지 않음 + 일정 시간 후 재시도
+
+**Collector — closed 상태 PR 저장**
+- Given: `pr_number=77`인 PR이 DB에 OPEN 상태로 저장되어 있는 상태
+- When: 같은 `pr_number=77`의 `action=closed` Webhook 이벤트 수신
+- Then: DB의 해당 PR 상태가 KILLED(처치완료)로 업데이트 + 새 레코드 생성 없음
+
+
+### 7-2. 백엔드 B (Grader) — 김관혁
+
+테스트 사양서를 문서화하여 전체 생애주기 검증 완료 (위치: `com/zombie/grader/service/`)
+
+- **TEST_SMALL.md**: HP 성장 알고리즘 및 Redis 캐싱 로직 검증
+- **TEST_MEDIUM.md**: 코멘트 데미지 차감 및 중복 작성 방어 로직 검증
+- **TEST_LARGE.md**: PR 생애주기(생성 / 처치 / 복원) 데이터 정합성 검증
+
+
+### 7-3. 백엔드 C (Notifier / API) — 성수연
+
+**graphql-service — PullRequestQueryTest**
+- 전체 조회 시 모든 PR 반환
+- BOSS 등급 필터링 시 해당 PR만 반환
+- 해당 등급 PR 없으면 빈 리스트 반환
+- 존재하지 않는 PR id 조회 시 `null` 반환
+- 존재하는 PR id 조회 시 해당 PR 반환
+
+**graphql-service — HunterMutationTest**
+- 처치완료 시 PR 상태 KILLED 변경 + `hunter_action` 저장 확인
+- 존재하지 않는 PR이어도 `hunter_action`은 저장됨
+
+**notifier — MailServiceTest**
+- ZOMBIE 등급 PR 이메일 발송 확인
+- BOSS 등급 PR 이메일 발송 확인
+- 이미 발송한 PR은 중복 발송하지 않음
+- 미발송 PR은 정상 발송됨
+
+**notifier — 전면 재작성 (Small/Medium 분류 기준 적용)**
+- `MailServiceTest` (Small): JavaMailSender Mock, 발송 메커니즘 검증
+- `ZombieMailTemplateTest` (Small): 이벤트별 제목/본문 순수 함수 검증
+- `ZombieNotifierServiceTest` (Small): 발송 조건 분기, 중복 방지 로직 검증
+- `HourlyNotifierSchedulerTest` (Small): 스케줄러 발송 조건 검증
+- `NotificationRepositoryTest` (Medium): H2 인메모리 DB로 실제 쿼리 검증
+
+
+## 8. 팀 이슈 / 트러블슈팅
+
+프로젝트 진행 중 팀 전체에 영향을 미쳤던 주요 기술 변경 및 의사결정을 기록한다.
+
+---
+
+### ① Railway 무료 플랜 — Docker 이미지 등록 수 제한
+
+**배경**: CD 파이프라인으로 Railway를 채택하여 GitHub Actions에서 Docker 이미지를 빌드 후 자동 배포하는 구조를 설계했다.
+
+**문제**: Railway 무료 플랜은 배포 가능한 Docker 이미지(서비스) 수에 제한이 있어, Collector / Grader / Notifier / API Gateway / RabbitMQ / Redis / MySQL / MongoDB 8개 컨테이너를 모두 배포하는 것이 불가능했다.
+
+**결과**: CD 단계를 미적용 상태로 남기고 CI(빌드/테스트 자동화)만 운영하는 것으로 결정. `ci.yml`에서 `deploy` / `approve` 잡을 제거하고 CI만 유지.
+
+---
+
+### ② Spring GraphQL → graphql-kotlin → REST API 전환
+
+**배경**: 초기 설계에서 API 레이어를 GraphQL로 구성하여 등급별 필터, 헌터 현황 등 다양한 조합의 쿼리를 단일 엔드포인트로 처리하는 구조를 목표로 했다.
+
+**1차 전환 — Spring GraphQL → graphql-kotlin**: Spring GraphQL과 Spring Boot 4.x 간 의존성 충돌이 발생하여 Kotlin 친화적인 `graphql-kotlin` 라이브러리로 전환을 시도했다.
+
+**2차 전환 — graphql-kotlin → REST API**: `graphql-kotlin`도 팀 내 학습 비용이 높고, 이 프로젝트에서 각 엔드포인트가 반환하는 데이터 구조가 명확히 고정되어 있어 GraphQL의 장점이 크지 않다고 판단. React 대시보드 연동 및 유지보수 편의를 위해 Spring MVC REST API로 최종 전환했다.
+
+**영향 범위**: BC(성수연) api-service 전면 리팩토링, 기존 GraphQL Resolver → REST Controller 교체.
+
+---
+
+### ③ 전반적인 기획 변경 — v1 등급제 → v2 HP 몬스터 시스템
+
+**배경**: 초기 기획(v1)은 방치 기간 기반 3·7·14일 등급제(새싹좀비 / 좀비 / 보스좀비)로, 등급 변경 시 1회 알림을 보내는 단순한 구조였다.
+
+**변경 내용**:
+
+| 항목 | v1 (등급제) | v2 (HP 몬스터) |
+| --- | --- | --- |
+| 트리거 주기 | 3일 / 7일 / 14일 방치 시 | 6시간마다 HP × 2 성장 |
+| 상태 표현 | 등급 (새싹좀비 / 좀비 / 보스좀비) | HP 수치 |
+| 팀원 상호작용 | 없음 | 코멘트 → 5,000 데미지 |
+| 처치 조건 | PR 머지 / 클로즈 | HP ≤ 0 또는 PR 머지 / 클로즈 |
+| 알림 주기 | 등급 변경 시 1회 | 1시간마다 정기 이메일 |
+
+**영향 범위**: Grader 배치 주기 변경(자정 1회 → 6시간마다), Notifier 알림 로직 전면 재작성, DB 스키마 변경(zombie_grade → current_hp / max_hp), 프론트엔드 UI 전면 재설계(등급 뱃지 → HP 바).
+
+---
+
+### ④ GraphQL → REST API 전환 (API 레이어)
+
+③번 기획 변경 및 ②번 기술 검토 결과와 맞물려, 팀 전체 API 레이어를 REST API로 통일하기로 결정. 상세 내용은 ② 항목 참고. BC(성수연) 개인 트러블슈팅 ① 항목과 연동.
+
+---
+
+### ⑤ WebSocket → RabbitMQ (서비스 간 통신)
+
+**배경**: 초기 설계에서 Grader → Notifier 간 실시간 이벤트 전달을 WebSocket으로 구현하는 방안을 검토했다.
+
+**문제**: WebSocket은 양방향 실시간 통신에 최적화되어 있으나, 이 프로젝트의 Grader(6시간 배치)와 Notifier(1시간 배치)는 실행 주기가 달라 동기 연결을 유지할 필요가 없었다. 또한 한 서비스가 일시적으로 다운될 경우 메시지 유실이 발생할 수 있다는 문제가 있었다.
+
+**결정**: 비동기 메시지 큐 방식인 RabbitMQ로 전환. 서비스가 다운되어도 메시지가 큐에 남아 유실이 없고(durable queue), 각 서비스가 자신의 주기에 맞춰 독립적으로 메시지를 소비할 수 있다. BC(성수연) 개인 트러블슈팅 ② 항목과 연동.
+
+---
+
+### ⑥ DB 추가 — Redis · MongoDB 도입
+
+**배경**: 초기 설계는 MySQL 단일 DB 구조였다.
+
+**Redis 도입 이유**: HP는 6시간마다 2배 성장하고 코멘트마다 깎이며 대시보드에서 실시간 조회된다. MySQL 매 조회는 성능 부담이 크고, 팀원 여러 명이 동시에 코멘트를 달 경우 HP 차감 충돌(Race Condition)이 발생할 수 있다. Redis를 HP 캐시 및 MULTI/EXEC 동시성 제어에 활용하고, `hp_before_defeat` 키로 Revert 부활용 HP 백업도 담당하게 했다.
+
+**MongoDB 도입 이유**: `damage_log`는 코멘트가 달릴 때마다 append-only로 쌓이는 대량 로그 데이터다. 삭제·수정이 없고 쓰기가 빈번하여 MySQL보다 MongoDB가 적합하다고 판단. 스키마 유연성도 로그 데이터 특성에 맞다.
+
+**영향 범위**: Docker Compose에 Redis · MongoDB 컨테이너 추가(총 8개), BB(김관혁) Redis 동시성 로직 구현, BC(성수연) MongoDB damage_log 연동.
+
+---
+
+### ⑦ Kotlin(앱) → React(웹) — 프론트엔드 전환
+
+**배경**: 초기 기획에서 프론트엔드를 Kotlin 기반 모바일/데스크톱 앱으로 설계했다.
+
+**문제**: Kotlin 앱은 팀원 대부분이 익숙하지 않은 플랫폼이었고, GitHub PR 대시보드 특성상 브라우저에서 바로 접근하는 웹이 훨씬 자연스러운 사용 흐름이다. 또한 REST API로의 전환(④번)과 맞물려 React와의 연동이 더 단순했다.
+
+**결정**: React 웹 대시보드로 전환. HP 바, 팀원별 데미지 기여 시각화 등 동적 UI를 React 컴포넌트로 구현.
+
+**영향 범위**: FE(최소영) 개발 환경 전환, API 연동 방식 GraphQL → REST로 변경.
+
+---
+
+### ⑧ TDD 전면 수정
+
+**배경**: 프로젝트 중반 기획 변경(③번)으로 등급제 기반으로 작성된 기존 테스트가 HP 몬스터 시스템과 맞지 않게 되었다. API 레이어 전환(②④번)으로 GraphQL Resolver 테스트도 무효화되었다.
+
+**결정**: 기존 테스트 전량 삭제 후 Small / Medium / Large 크기 분류 기준에 맞게 전면 재작성.
+
+- **Small**: 외부 의존성 없이 순수 로직만 검증 (Mock 사용)
+- **Medium**: H2 인메모리 DB 등 경량 인프라와 함께 검증
+- **Large**: 전체 서비스 흐름 E2E 검증
+
+**영향 범위**: BA · BB · BC 전원 테스트 재작성. 각 담당자별 상세 내용은 7. TDD 섹션 참고.
+
+---
+
+### ⑨ 시스템 아키텍처 전면 수정
+
+위 변경들이 누적되면서 초기 아키텍처 다이어그램이 실제 구현과 크게 달라졌다. 주요 변경점을 반영하여 아키텍처를 전면 재설계했다.
+
+| 항목 | v1 아키텍처 | v2 아키텍처 |
+| --- | --- | --- |
+| 서비스 간 통신 | REST 직접 호출 | RabbitMQ 메시지 큐 |
+| API 레이어 | GraphQL (:8084) | REST API (:8084) |
+| DB 구성 | MySQL 단일 | MySQL + Redis + MongoDB |
+| 프론트엔드 | Kotlin 앱 | React 웹 |
+| 알림 트리거 | 등급 변경 시 1회 | 1시간 정기 스케줄러 |
+| 컨테이너 수 | 4개 | 8개 |
+
+---
+
+## 9. 트러블슈팅 (개인별)
+
+### 8-1. 백엔드 A (Collector) — 조혜연
+
+**① spring-dotenv 라이브러리 Spring Boot 4.x 호환성 문제** `SCRUM-52`
+
+`http://localhost:8081` 접속 시 GitHub OAuth 페이지 URL에 Client ID 대신 변수명 그대로(`$%7BGITHUB_CLIENT_ID%7D`) 표시됨. `build.gradle.kts`에 Spring Boot 2.x용 아티팩트(`me.paulschwarz:spring-dotenv:4.0.0`)를 사용한 것이 원인. Spring Boot 4.x에서는 별도 아티팩트가 필요하며, `me.paulschwarz:springboot4-dotenv:5.0.1`로 교체 후 정상 동작 확인.
+
+```kotlin
+// 변경 전
+implementation("me.paulschwarz:spring-dotenv:4.0.0")
+
+// 변경 후
+implementation("me.paulschwarz:springboot4-dotenv:5.0.1")
+```
+
+**② jackson-module-kotlin 패키지 그룹 ID 오류** `SCRUM-60`
+
+`WebhookController.kt`에서 `ObjectMapper`와 `registerKotlinModule()`을 import할 수 없어 `Unresolved reference` 컴파일 오류 발생. `tools.jackson.module`은 Spring Boot 4.x 내부용 패키지명으로, 외부에서 직접 사용할 때는 기존 패키지명인 `com.fasterxml.jackson.module`을 써야 한다.
+
+```kotlin
+// 변경 전
+implementation("tools.jackson.module:jackson-module-kotlin")
+
+// 변경 후
+implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
+```
+
+**③ SecurityConfig.kt 파일 위치 오류** `SCRUM-52`
+
+`SecurityConfig.kt`를 생성했으나 Spring이 Bean으로 인식하지 못하는 문제 발생. IntelliJ에서 파일 생성 시 `collector/` 루트에 잘못 생성됨. Spring Boot는 `@SpringBootApplication` 선언 패키지 하위만 컴포넌트 스캔하므로, `src/main/kotlin/com/zombie/collector/` 하위로 이동 후 정상 등록 확인.
+
+---
+
+### 8-2. 백엔드 B (Grader) — 김관혁
+
+**① Gradle 9.5.1 툴체인 호환성 오류**
+
+Gradle 9.5.1 빌드 시 Java 툴체인 호환성 오류 발생. `settings.gradle.kts`에 Foojay 플러그인(1.0.0)을 적용하여 해결 및 빌드 안정성 확보.
+
+```kotlin
+// settings.gradle.kts
+plugins {
+    id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
+}
+```
+
+Given-When-Then 패턴의 `GraderServiceTest` 작성 및 단위/E2E 테스트 100% 통과로 검증 완료.
+
+---
+
+### 8-3. 백엔드 C (Notifier / API) — 성수연
+
+**① GraphQL → REST API 전환**
+
+기존 GraphQL 기반으로 설계된 api-service를 Spring MVC REST API로 전환. React 대시보드 연동 및 팀 내 유지보수 편의를 위해 REST 방식으로 통일.
+
+- `PullRequestController`: `GET /api/pull-requests`, `GET /api/pull-requests/{id}`
+- `HunterActionController`: `POST /api/hunter-actions`
+- GraphQL 의존성 제거, Spring Web으로 교체
+
+**② RabbitMQ monster.events 소비 구현**
+
+Grader가 발행하는 `monster.events` fanout exchange를 Notifier가 구독하여 이벤트 타입별 처리 구현.
+
+- `RabbitMQConfig`: `monster.events` exchange + `notifier.monster.queue` 바인딩
+- `MonsterEventConsumer`: 이벤트 타입(`hp_updated` / `defeated` / `revived`)별 분기 처리
+- `MonsterHpCache`: `hp_updated` 이벤트 인메모리 캐싱 (`ConcurrentHashMap`)
+- `HourlyNotifierScheduler`: 매 정각 캐시 기반 이메일 발송
+
+**③ Notifier 전 모듈 TDD 재작성**
+
+기존 테스트를 삭제하고 테스트 크기(Small/Medium) 분류 기준에 맞게 전면 재작성. (상세 내용은 7. TDD 섹션 참고)
+
+
+## 10. 팀 구성
 
 | 역할 | 담당자 | 담당 영역 |
 | --- | --- | --- |
@@ -290,7 +530,7 @@ HP는 6시간마다 2배로 커지고, 코멘트가 달릴 때마다 깎이고, 
 ---
 
 
-## 8. 일정 계획
+## 11. 일정 계획
 
 | 스프린트 | 기간 | 목표 |
 | --- | --- | --- |
