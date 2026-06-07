@@ -58,4 +58,23 @@ class CollectorService(
             else -> log.info("처리하지 않는 액션: ${payload.action}")
         }
     }
+
+    // SCRUM-121: PR Revert 이벤트 처리
+    fun handleRevertEvent(payload: WebhookPayload) {
+        val repoFullName = payload.repository.fullName
+        val prNumber = payload.pullRequest.number
+
+        val existing = pullRequestRepository
+            .findByPrNumberAndRepoFullName(prNumber, repoFullName)
+
+        if (existing != null) {
+            // 처치됐던 PR을 다시 OPEN으로 복원
+            existing.state = "OPEN"
+            existing.lastActivityAt = java.time.LocalDateTime.now()
+            pullRequestRepository.save(existing)
+            log.info("PR Revert 처리 완료: #$prNumber ($repoFullName) — 몬스터 부활 트리거")
+        } else {
+            log.warn("Revert 수신했으나 PR 없음: #$prNumber")
+        }
+    }
 }

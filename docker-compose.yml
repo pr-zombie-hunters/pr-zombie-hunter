@@ -11,6 +11,11 @@ services:
       - notifier
       - graphql-service
 
+  redis:
+    image: redis:7
+    ports:
+       - "6379:6379"
+
   collector:
     build: ./collector
     ports:
@@ -52,7 +57,3 @@ services:
 volumes:
   mysql-data:
 
-  redis:
-    image: redis:7
-    ports:
-      - "6379:6379"
