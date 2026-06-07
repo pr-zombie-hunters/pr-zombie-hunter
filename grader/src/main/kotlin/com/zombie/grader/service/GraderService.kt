@@ -1,5 +1,7 @@
 package com.zombie.grader.service
 
+import org.springframework.stereotype.Service
+
 enum class PrStatus { OPEN, MERGED, CLOSED, REVERTED }
 
 data class ZombieMonster(
@@ -11,12 +13,14 @@ data class ZombieMonster(
 
 data class GraderResult(val updatedHp: Long, val isDefeated: Boolean)
 
+// Redis 연동을 위한 인터페이스 규격
 interface MonsterRedisRepository {
     fun saveCurrentHp(prId: String, hp: Long)
     fun saveHpBeforeDefeat(prId: String, hp: Long)
     fun getHpBeforeDefeat(prId: String): Long?
 }
 
+@Service // 💡 핵심: 스프링 빈(Bean)으로 등록
 class GraderService(
     private val redisRepository: MonsterRedisRepository
 ) {
@@ -26,6 +30,7 @@ class GraderService(
         if (monster.isDefeated || monster.prStatus != PrStatus.OPEN) {
             return GraderResult(monster.currentHp, monster.isDefeated)
         }
+        
         monster.currentHp *= 2
         redisRepository.saveCurrentHp(monster.prId, monster.currentHp)
         return GraderResult(monster.currentHp, monster.isDefeated)
@@ -35,16 +40,20 @@ class GraderService(
         if (monster.isDefeated || !isUniqueComment) {
             return GraderResult(monster.currentHp, monster.isDefeated)
         }
+        
         monster.currentHp -= DAMAGE_PER_COMMENT
+        
         if (monster.currentHp <= 0) {
             redisRepository.saveHpBeforeDefeat(monster.prId, monster.currentHp + DAMAGE_PER_COMMENT)
             monster.currentHp = 0
             monster.isDefeated = true
         }
+        
         redisRepository.saveCurrentHp(monster.prId, monster.currentHp)
         return GraderResult(monster.currentHp, monster.isDefeated)
     }
 
+    // NEW-16: Revert 수신 시 Redis hp_before_defeat -> current_hp 복원
     fun handlePrStatusChange(monster: ZombieMonster, newStatus: PrStatus): GraderResult {
         when (newStatus) {
             PrStatus.MERGED, PrStatus.CLOSED -> {
@@ -59,6 +68,7 @@ class GraderService(
             }
             PrStatus.OPEN -> {} 
         }
+        
         monster.prStatus = newStatus
         redisRepository.saveCurrentHp(monster.prId, monster.currentHp)
         return GraderResult(monster.currentHp, monster.isDefeated)
