@@ -440,78 +440,127 @@ HP는 6시간마다 2배로 커지고, 코멘트가 달릴 때마다 깎이고, 
 ---
 
 ## 9. 트러블슈팅 (개인별)
-
-### 8-1. 백엔드 A (Collector) — 조혜연
-
+ 
+### 9-1. 팀장 / DevOps — 송윤서
+ 
+**① 루트 Gradle Wrapper 누락으로 인한 빌드 실패**
+ 
+Spring Boot 4.0.6 실행 시 IntelliJ가 자체 Gradle 8.13을 사용하면서 빌드 실패. 루트 프로젝트에 Gradle Wrapper가 없어 IntelliJ가 자체 버전으로 폴백한 것이 원인이었다. 루트에 Gradle Wrapper를 추가하고 전 서비스를 Gradle 9.5.1 기반으로 통일하여 해결.
+ 
+**②서비스 폴더 내 Dockerfile 누락으로 인한 빌드 실패**
+ 
+`docker compose up` 실행 시 각 서비스의 Dockerfile을 찾지 못해 빌드 실패. MSA 서비스 폴더 초기 생성 시 Dockerfile이 포함되지 않은 것이 원인. 각 서비스 폴더에 Dockerfile을 생성 후 `docker compose up` 정상 실행 확인.
+ 
+---
+ 
+### 9-2. 백엔드 A (Collector) — 조혜연
+ 
 **① spring-dotenv 라이브러리 Spring Boot 4.x 호환성 문제** `SCRUM-52`
-
+ 
 `http://localhost:8081` 접속 시 GitHub OAuth 페이지 URL에 Client ID 대신 변수명 그대로(`$%7BGITHUB_CLIENT_ID%7D`) 표시됨. `build.gradle.kts`에 Spring Boot 2.x용 아티팩트(`me.paulschwarz:spring-dotenv:4.0.0`)를 사용한 것이 원인. Spring Boot 4.x에서는 별도 아티팩트가 필요하며, `me.paulschwarz:springboot4-dotenv:5.0.1`로 교체 후 정상 동작 확인.
-
+ 
 ```kotlin
 // 변경 전
 implementation("me.paulschwarz:spring-dotenv:4.0.0")
-
+ 
 // 변경 후
 implementation("me.paulschwarz:springboot4-dotenv:5.0.1")
 ```
-
+ 
 **② jackson-module-kotlin 패키지 그룹 ID 오류** `SCRUM-60`
-
+ 
 `WebhookController.kt`에서 `ObjectMapper`와 `registerKotlinModule()`을 import할 수 없어 `Unresolved reference` 컴파일 오류 발생. `tools.jackson.module`은 Spring Boot 4.x 내부용 패키지명으로, 외부에서 직접 사용할 때는 기존 패키지명인 `com.fasterxml.jackson.module`을 써야 한다.
-
+ 
 ```kotlin
 // 변경 전
 implementation("tools.jackson.module:jackson-module-kotlin")
-
+ 
 // 변경 후
 implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
 ```
-
+ 
 **③ SecurityConfig.kt 파일 위치 오류** `SCRUM-52`
-
+ 
 `SecurityConfig.kt`를 생성했으나 Spring이 Bean으로 인식하지 못하는 문제 발생. IntelliJ에서 파일 생성 시 `collector/` 루트에 잘못 생성됨. Spring Boot는 `@SpringBootApplication` 선언 패키지 하위만 컴포넌트 스캔하므로, `src/main/kotlin/com/zombie/collector/` 하위로 이동 후 정상 등록 확인.
-
+ 
 ---
-
-### 8-2. 백엔드 B (Grader) — 김관혁
-
+ 
+### 9-3. 백엔드 B (Grader) — 김관혁
+ 
 **① Gradle 9.5.1 툴체인 호환성 오류**
-
+ 
 Gradle 9.5.1 빌드 시 Java 툴체인 호환성 오류 발생. `settings.gradle.kts`에 Foojay 플러그인(1.0.0)을 적용하여 해결 및 빌드 안정성 확보.
-
+ 
 ```kotlin
 // settings.gradle.kts
 plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }
 ```
-
+ 
 Given-When-Then 패턴의 `GraderServiceTest` 작성 및 단위/E2E 테스트 100% 통과로 검증 완료.
-
+ 
 ---
-
-### 8-3. 백엔드 C (Notifier / API) — 성수연
-
+ 
+### 9-4. 백엔드 C (Notifier / API) — 성수연
+ 
 **① GraphQL → REST API 전환**
-
+ 
 기존 GraphQL 기반으로 설계된 api-service를 Spring MVC REST API로 전환. React 대시보드 연동 및 팀 내 유지보수 편의를 위해 REST 방식으로 통일.
-
+ 
 - `PullRequestController`: `GET /api/pull-requests`, `GET /api/pull-requests/{id}`
 - `HunterActionController`: `POST /api/hunter-actions`
 - GraphQL 의존성 제거, Spring Web으로 교체
-
 **② RabbitMQ monster.events 소비 구현**
-
+ 
 Grader가 발행하는 `monster.events` fanout exchange를 Notifier가 구독하여 이벤트 타입별 처리 구현.
-
+ 
 - `RabbitMQConfig`: `monster.events` exchange + `notifier.monster.queue` 바인딩
 - `MonsterEventConsumer`: 이벤트 타입(`hp_updated` / `defeated` / `revived`)별 분기 처리
 - `MonsterHpCache`: `hp_updated` 이벤트 인메모리 캐싱 (`ConcurrentHashMap`)
 - `HourlyNotifierScheduler`: 매 정각 캐시 기반 이메일 발송
-
 **③ Notifier 전 모듈 TDD 재작성**
-
+ 
 기존 테스트를 삭제하고 테스트 크기(Small/Medium) 분류 기준에 맞게 전면 재작성. (상세 내용은 7. TDD 섹션 참고)
+ 
+ 
+### 9-5. 프론트엔드 (React 대시보드) — 최소영
+ 
+**① MonsterCard 컴포넌트 — 다중 상태 렌더링 혼재 문제**
+ 
+생존 / 처치 완료 / Revert 부활 세 가지 상태에 따라 카드 색상, 배너, 버튼이 전부 달라야 했는데, 상태별 분기 처리를 각 JSX 요소마다 개별적으로 작성하다 보니 `is_defeated`, `is_reverted`, `danger` 세 가지 조건이 중복 계산되어 렌더링이 뒤섞이는 문제 발생.
+ 
+카드 최상단에서 상태값을 한 번에 계산한 뒤 하위 요소에 전달하는 방식으로 통일하여 해결.
+ 
+검증 항목:
+- `is_defeated: true` 더미 데이터 → 카드 회색 처리, 버튼 숨김, "💀 DEFEATED" 표시 확인
+- `is_reverted: true` 더미 데이터 → 보라색 배너 및 부활 메시지 정상 렌더링 확인
+- `hpPct > 80` 더미 데이터 → 카드 빨간색 테두리 및 👹 이모지 정상 표시 확인
+- 세 가지 상태가 동시에 바뀌어도 카드 스타일이 뒤섞이지 않음을 시각적으로 검토
+**② HP 성장 시스템 실시간 계산 — 음수 경과 시간 버그**
+ 
+1초마다 전체 몬스터의 HP를 재계산하는 과정에서 `created_at` 기준 경과 시간이 음수로 계산되거나 성장 단계가 의도치 않게 건너뛰어지는 문제 발생.
+ 
+`Date.now()`와 `new Date(monster.created_at).getTime()`의 차이를 그대로 사용하다 보니, 시스템 시간 오차나 잘못된 `created_at` 값이 들어올 경우 경과 시간이 음수가 되어 `growthCount`가 0으로 고정되고 `max_hp`가 `base_hp` 그대로 유지되는 버그였다.
+ 
+`Math.max(0, ...)` 로 음수 경과 시간을 방어 처리하고, 성장 단계를 if-else 체인으로 명확하게 분리하여 해결.
+ 
+```javascript
+// 변경 전 — 음수 가능
+const elapsed = Date.now() - new Date(monster.created_at).getTime();
+ 
+// 변경 후 — 음수 방어
+const elapsed = Math.max(0, Date.now() - new Date(monster.created_at).getTime());
+ 
+// HP 하한선 방어
+const currentHp = Math.max(0, maxHp - totalDamage);
+```
+ 
+검증 항목:
+- `created_at`을 미래 시각으로 설정해 경과 시간이 음수가 되는 케이스 → `growthCount: 0`, `max_hp: 10,000` 유지 확인
+- `created_at`을 현재 기준 3h / 6h / 12h / 18h 전으로 설정 → `growthCount` 1/2/3/4 단계별 정상 증가 및 `max_hp` 20,000 / 40,000 / 80,000 / 160,000 확인
+- 1초 interval 동작 중 `damage_log` 누적 합산이 매 tick마다 정확히 반영되는지 콘솔 로그 검토
+- HP 0 미만 방어 처리 후 처치 완료 상태 전환 정상 확인
 
 
 ## 10. 팀 구성
