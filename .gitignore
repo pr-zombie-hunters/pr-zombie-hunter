@@ -1,23 +1,26 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# Gradle
+.gradle
+**/build/
+!**/src/**/build/
+HELP.md
+*.bat
+.gitattributes
+gradle-app.setting
+!gradle-wrapper.jar
+!gradle-wrapper.properties
+.gradletasknamecache
+.project
+.classpath
 
-# dependencies
-/node_modules
-/.pnp
-.pnp.js
+# IntelliJ
+.idea/
+*.iml
+*.iws
 
-# testing
-/coverage
-
-# production
-/build
-
-# misc
+# OS
 .DS_Store
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+Thumbs.db
 
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+# 환경변수
+.env
+node_modules

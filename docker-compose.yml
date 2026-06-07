@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  gateway:
+    build: ./gateway
+    ports:
+      - "9080:8080"
+    depends_on:
+      - collector
+      - grader
+      - notifier
+      - graphql-service
+
+  collector:
+    build: ./collector
+    depends_on:
+      - mysql
+
+  grader:
+    build: ./grader
+    depends_on:
+      - mysql
+
+  notifier:
+    build: ./notifier
+    depends_on:
+      - mysql
+
+  graphql-service:
+    build: ./graphql-service
+    depends_on:
+      - mysql
+
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: zombie_hunter
+
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+volumes:
+  mysql-data:
