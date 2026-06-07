@@ -20,6 +20,9 @@ repositories {
 }
 
 dependencies {
+	implementation("org.springframework.boot:spring-boot-starter-data-redis")
+	testImplementation("org.mockito:mockito-core:5.11.0")
+	testImplementation("org.mockito.kotlin:mockito-kotlin:5.3.1")
 	implementation("me.paulschwarz:springboot4-dotenv:5.0.1")
 	implementation("org.springframework.boot:spring-boot-starter-security")
 	implementation("org.springframework.boot:spring-boot-starter-oauth2-client")
