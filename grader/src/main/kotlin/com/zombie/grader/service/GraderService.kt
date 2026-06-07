@@ -21,6 +21,7 @@ data class GraderResult(val updatedHp: Long, val isDefeated: Boolean)
 // Redis 연동을 위한 인터페이스 규격
 interface MonsterRedisRepository {
     fun saveCurrentHp(prId: String, hp: Long)
+    fun getCurrentHp(prId: String): Long?
     fun saveHpBeforeDefeat(prId: String, hp: Long)
     fun getHpBeforeDefeat(prId: String): Long?
 }
