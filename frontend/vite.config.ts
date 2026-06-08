@@ -7,7 +7,7 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/api': {
-        target: 'http://localhost:8090', // Spring Cloud Gateway
+        target: 'http://localhost:8084', // api-service 직접 연결
         changeOrigin: true,
       },
     },

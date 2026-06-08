@@ -38,10 +38,10 @@ class PullRequestController(
     }
 
     private fun com.zombie.graphql.entity.PullRequestEntity.toType() = PullRequestType(
-        id = id,
+        id = "${repoFullName}#${prNumber}",
         title = title,
         author = author,
-        zombieGrade = ZombieGrade.valueOf(zombieGrade),
+        zombieGrade = runCatching { ZombieGrade.valueOf(zombieGrade) }.getOrDefault(ZombieGrade.NONE),
         staleDays = ChronoUnit.DAYS.between(lastActivityAt, LocalDateTime.now()),
         lastActivityAt = lastActivityAt.toString(),
     )

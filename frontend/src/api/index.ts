@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const api = axios.create({
-  baseURL: 'http://localhost:8090',
+  baseURL: '', // Vite 프록시 통해서 요청 (/api → localhost:8090)
   timeout: 5000,
 })
 

@@ -4,13 +4,18 @@ import jakarta.persistence.*
 import java.time.LocalDateTime
 
 @Entity
-@Table(name = "pull_request")
+@Table(name = "pull_requests")  // collector가 저장하는 테이블명
 class PullRequestEntity(
-    @Id
-    val id: String,                    // VARCHAR(50) - GitHub PR ID
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    val id: Long = 0,
 
+    val prNumber: Int,
     val title: String,
     val author: String,
+    val repoFullName: String,
+    val htmlUrl: String,
+    val state: String,
     val lastActivityAt: LocalDateTime,
     val zombieGrade: String = "NONE",
+    val createdAt: LocalDateTime = LocalDateTime.now(),
 )

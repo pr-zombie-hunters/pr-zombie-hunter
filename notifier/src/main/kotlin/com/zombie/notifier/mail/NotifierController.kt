@@ -1,5 +1,6 @@
 package com.zombie.notifier.mail
 
+import com.zombie.notifier.messaging.MonsterEvent
 import org.springframework.web.bind.annotation.*
 
 data class NotifyRequest(
@@ -18,11 +19,14 @@ class NotifierController(
     @PostMapping
     fun notify(@RequestBody request: NotifyRequest): Map<String, String> {
         zombieNotifierService.notify(
-            prId = request.prId,
-            prTitle = request.prTitle,
-            prUrl = request.prUrl,
-            staleDays = request.staleDays,
-            grade = request.grade,
+            MonsterEvent(
+                eventType = request.grade,
+                prId = request.prId,
+                prTitle = request.prTitle,
+                prUrl = request.prUrl,
+                currentHp = 0,
+                maxHp = 0,
+            )
         )
         return mapOf("status" to "ok")
     }
