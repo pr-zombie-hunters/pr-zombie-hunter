@@ -13,6 +13,11 @@ class MonsterRedisRepositoryImpl(
         redisTemplate.opsForValue().set(key, hp.toString())
     }
 
+    override fun getCurrentHp(prId: String): Long? {
+        val key = "monster:pr:${prId}:hp"
+        return redisTemplate.opsForValue().get(key)?.toLongOrNull()
+    }
+
     override fun saveHpBeforeDefeat(prId: String, hp: Long) {
         val key = "monster:hp_before_defeat:${prId}"
         redisTemplate.opsForValue().set(key, hp.toString())
