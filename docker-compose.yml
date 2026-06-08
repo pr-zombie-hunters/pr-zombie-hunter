@@ -67,6 +67,7 @@ services:
       DB_URL: jdbc:mysql://mysql:3306/zombie_hunter?serverTimezone=Asia/Seoul
       DB_USERNAME: root
       DB_PASSWORD: root
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
 
   rabbitmq:
     image: rabbitmq:3-management

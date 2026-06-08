@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { PullRequest, HunterAction, postHunterAction } from '../api'
+import { PullRequest, HunterAction, postHunterAction, mergePullRequest, closePullRequest } from '../api'
 import './ZombieCard.css'
 
 interface Props {
@@ -26,6 +26,8 @@ const GRADE_EMOJI: Record<string, string> = {
 
 export default function ZombieCard({ pr, actions, onAttack }: Props) {
   const [loading, setLoading] = useState(false)
+  const [mergeLoading, setMergeLoading] = useState(false)
+  const [closeLoading, setCloseLoading] = useState(false)
   const isRevived = pr.zombieGrade === 'REVIVED'
   const maxHp = HP_MAP[pr.zombieGrade] ?? 10000
   const currentHp = Math.max(0, maxHp - actions.length * 5000)
@@ -93,8 +95,44 @@ export default function ZombieCard({ pr, actions, onAttack }: Props) {
         <button className="attack-btn" onClick={handleAttack} disabled={loading}>
           ● 코멘트 공격 (-5,000 HP)
         </button>
-        <button className="merge-btn">Merge ✓</button>
-        <button className="close-btn">Close X</button>
+        <button
+          className="merge-btn"
+          disabled={mergeLoading}
+          onClick={async () => {
+            if (!confirm(`PR "${pr.title}" 을 머지할까요?`)) return
+            setMergeLoading(true)
+            try {
+              await mergePullRequest(pr.id)
+              alert('머지 완료! 🎉')
+              onAttack()
+            } catch {
+              alert('머지 실패. GitHub에서 직접 확인해주세요.')
+            } finally {
+              setMergeLoading(false)
+            }
+          }}
+        >
+          {mergeLoading ? '...' : 'Merge ✓'}
+        </button>
+        <button
+          className="close-btn"
+          disabled={closeLoading}
+          onClick={async () => {
+            if (!confirm(`PR "${pr.title}" 을 닫을까요?`)) return
+            setCloseLoading(true)
+            try {
+              await closePullRequest(pr.id)
+              alert('PR 닫기 완료!')
+              onAttack()
+            } catch {
+              alert('닫기 실패. GitHub에서 직접 확인해주세요.')
+            } finally {
+              setCloseLoading(false)
+            }
+          }}
+        >
+          {closeLoading ? '...' : 'Close X'}
+        </button>
       </div>
     </div>
   )

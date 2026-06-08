@@ -38,3 +38,20 @@ export const fetchHunterStats = () =>
 
 export const postHunterAction = (prId: string, hunterId: string) =>
   api.post<HunterAction>('/api/hunter-actions', { prId, hunterId, actionType: 'HUNT' }).then(r => r.data)
+
+// prId 형식: "owner/repo#number" ex) "pr-zombie-hunters/pr-zombie-hunter#21"
+const parsePrId = (prId: string) => {
+  const [repoFull, number] = prId.split('#')
+  const [owner, repo] = repoFull.split('/')
+  return { owner, repo, number }
+}
+
+export const mergePullRequest = (prId: string) => {
+  const { owner, repo, number } = parsePrId(prId)
+  return api.post(`/api/pull-requests/${owner}/${repo}/${number}/merge`).then(r => r.data)
+}
+
+export const closePullRequest = (prId: string) => {
+  const { owner, repo, number } = parsePrId(prId)
+  return api.post(`/api/pull-requests/${owner}/${repo}/${number}/close`).then(r => r.data)
+}

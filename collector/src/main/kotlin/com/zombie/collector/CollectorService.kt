@@ -13,45 +13,33 @@ class CollectorService(
     fun handleWebhookEvent(payload: WebhookPayload) {
         val repoFullName = payload.repository.fullName
         val prNumber = payload.pullRequest.number
+        val prId = "$repoFullName#$prNumber"
 
         when (payload.action) {
             "opened", "reopened" -> {
-                // 중복 확인 (TDD: 중복 PR 스킵)
-                val existing = pullRequestRepository
-                    .findByPrNumberAndRepoFullName(prNumber, repoFullName)
-
-                if (existing != null) {
-                    log.info("중복 PR 스킵: #$prNumber ($repoFullName)")
+                if (pullRequestRepository.existsById(prId)) {
+                    log.info("중복 PR 스킵: $prId")
                     return
                 }
 
-                // 신규 PR 저장 (TDD: GitHub API 정상 응답 시 PR 수집)
                 val pr = PullRequest(
-                    prNumber = prNumber,
+                    id = prId,
                     title = payload.pullRequest.title,
                     author = payload.pullRequest.user.login,
-                    repoFullName = repoFullName,
-                    htmlUrl = payload.pullRequest.htmlUrl,
-                    state = "OPEN",
                     lastActivityAt = LocalDateTime.parse(
-                        payload.pullRequest.updatedAt
-                            .replace("Z", "")
+                        payload.pullRequest.updatedAt.replace("Z", "")
                     )
                 )
                 pullRequestRepository.save(pr)
-                log.info("PR 저장 완료: #$prNumber $repoFullName")
+                log.info("PR 저장 완료: $prId")
             }
 
             "closed" -> {
-                // 처치완료 처리 (TDD: closed 상태 PR 저장)
-                val existing = pullRequestRepository
-                    .findByPrNumberAndRepoFullName(prNumber, repoFullName)
-
-                if (existing != null) {
-                    existing.state = "KILLED"
-                    existing.lastActivityAt = LocalDateTime.now()
-                    pullRequestRepository.save(existing)
-                    log.info("PR 처치완료: #$prNumber ($repoFullName)")
+                pullRequestRepository.findById(prId).ifPresent { pr ->
+                    pr.lastActivityAt = LocalDateTime.now()
+                    pr.zombieGrade = "DEFEATED"
+                    pullRequestRepository.save(pr)
+                    log.info("PR 처치완료: $prId")
                 }
             }
 
@@ -59,22 +47,15 @@ class CollectorService(
         }
     }
 
-    // SCRUM-121: PR Revert 이벤트 처리
+    // Revert 이벤트 처리
     fun handleRevertEvent(payload: WebhookPayload) {
-        val repoFullName = payload.repository.fullName
-        val prNumber = payload.pullRequest.number
+        val prId = "${payload.repository.fullName}#${payload.pullRequest.number}"
 
-        val existing = pullRequestRepository
-            .findByPrNumberAndRepoFullName(prNumber, repoFullName)
-
-        if (existing != null) {
-            // 처치됐던 PR을 다시 OPEN으로 복원
-            existing.state = "OPEN"
-            existing.lastActivityAt = java.time.LocalDateTime.now()
-            pullRequestRepository.save(existing)
-            log.info("PR Revert 처리 완료: #$prNumber ($repoFullName) — 몬스터 부활 트리거")
-        } else {
-            log.warn("Revert 수신했으나 PR 없음: #$prNumber")
-        }
+        pullRequestRepository.findById(prId).ifPresent { pr ->
+            pr.lastActivityAt = LocalDateTime.now()
+            pr.zombieGrade = "NONE"
+            pullRequestRepository.save(pr)
+            log.info("PR Revert 처리 완료: $prId — 몬스터 부활 트리거")
+        } ?: log.warn("Revert 수신했으나 PR 없음: $prId")
     }
 }
