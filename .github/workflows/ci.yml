@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    name: Build & Test (${{ matrix.module }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        module: [ gateway, collector, grader, notifier, graphql-service ]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ matrix.module }}-${{ hashFiles('${{ matrix.module }}/gradle/wrapper/gradle-wrapper.properties', '${{ matrix.module }}/**/*.kts') }}
+          restore-keys: |
+            gradle-${{ matrix.module }}-
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x ${{ matrix.module }}/gradlew
+
+      - name: Build and test
+        run: ./gradlew build
+        working-directory: ${{ matrix.module }}
+        env:
+          MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
+          MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}

@@ -1,3 +1,6 @@
+plugins {
+    id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
+}
 rootProject.name = "pr-zombie-hunter"
 
 include(
@@ -5,5 +8,5 @@ include(
     "collector",
     "grader",
     "notifier",
-    "graphql-service"
+    "api-service"
 )
