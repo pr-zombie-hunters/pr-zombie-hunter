@@ -26,111 +26,114 @@ import org.springframework.transaction.annotation.Transactional
 @SpringBootTest
 @ActiveProfiles("test")
 @Transactional
-class NotificationRepositoryTest : DescribeSpec({
+class NotificationRepositoryTest : DescribeSpec() {
 
-    extensions(SpringExtension)
-
+    // 람다 안이 아닌 클래스 프로퍼티로 선언해야 @Autowired 동작
     @Autowired
     lateinit var notificationRepository: NotificationRepository
 
-    describe("NotificationRepository") {
+    init {
+        extensions(SpringExtension)
 
-        /**
-         * [테스트 그룹 1] 저장 및 조회
-         */
-        context("저장 및 조회") {
+        describe("NotificationRepository") {
 
-            it("Notification을 저장하면 DB에 정상적으로 저장된다") {
-                // Given: 저장할 Notification 객체가 주어졌을 때
-                val notification = Notification(
-                    pullRequestId = "pr-zombie-hunters/repo#42",
-                    recipientEmail = "team@gmail.com",
-                    grade = "hp_updated",
-                )
+            /**
+             * [테스트 그룹 1] 저장 및 조회
+             */
+            context("저장 및 조회") {
 
-                // When: save()를 호출하면
-                val saved = notificationRepository.save(notification)
-
-                // Then: id가 부여되고 값이 정확히 저장된다
-                saved.id shouldBe 1L
-                saved.pullRequestId shouldBe "pr-zombie-hunters/repo#42"
-                saved.grade shouldBe "hp_updated"
-            }
-        }
-
-        /**
-         * [테스트 그룹 2] 중복 발송 방지 쿼리 검증
-         */
-        context("중복 발송 방지 쿼리") {
-
-            it("저장된 PR+이벤트 타입 조합은 exists가 true를 반환한다") {
-                // Given: PR#42에 hp_updated 이벤트로 발송 이력이 저장됐을 때
-                notificationRepository.save(
-                    Notification(
+                it("Notification을 저장하면 DB에 정상적으로 저장된다") {
+                    // Given: 저장할 Notification 객체가 주어졌을 때
+                    val notification = Notification(
                         pullRequestId = "pr-zombie-hunters/repo#42",
                         recipientEmail = "team@gmail.com",
                         grade = "hp_updated",
                     )
-                )
 
-                // When: 같은 PR + 같은 이벤트 타입으로 exists를 조회하면
-                val result = notificationRepository.existsByPullRequestIdAndGrade(
-                    "pr-zombie-hunters/repo#42", "hp_updated"
-                )
+                    // When: save()를 호출하면
+                    val saved = notificationRepository.save(notification)
 
-                // Then: true가 반환된다 (이미 발송됨)
-                result shouldBe true
+                    // Then: id가 부여되고 값이 정확히 저장된다
+                    saved.id shouldBe 1L
+                    saved.pullRequestId shouldBe "pr-zombie-hunters/repo#42"
+                    saved.grade shouldBe "hp_updated"
+                }
             }
 
-            it("저장되지 않은 PR은 exists가 false를 반환한다") {
-                // Given: 아무 이력도 없을 때
+            /**
+             * [테스트 그룹 2] 중복 발송 방지 쿼리 검증
+             */
+            context("중복 발송 방지 쿼리") {
 
-                // When: 없는 PR로 exists를 조회하면
-                val result = notificationRepository.existsByPullRequestIdAndGrade(
-                    "pr-zombie-hunters/repo#999", "hp_updated"
-                )
-
-                // Then: false가 반환된다 (미발송)
-                result shouldBe false
-            }
-
-            it("같은 PR이라도 다른 이벤트 타입은 별개로 인식한다") {
-                // Given: PR#42에 hp_updated 이력만 있을 때
-                notificationRepository.save(
-                    Notification(
-                        pullRequestId = "pr-zombie-hunters/repo#42",
-                        recipientEmail = "team@gmail.com",
-                        grade = "hp_updated",
+                it("저장된 PR+이벤트 타입 조합은 exists가 true를 반환한다") {
+                    // Given: PR#42에 hp_updated 이벤트로 발송 이력이 저장됐을 때
+                    notificationRepository.save(
+                        Notification(
+                            pullRequestId = "pr-zombie-hunters/repo#42",
+                            recipientEmail = "team@gmail.com",
+                            grade = "hp_updated",
+                        )
                     )
-                )
 
-                // When: 같은 PR이지만 defeated 이벤트 타입으로 조회하면
-                val result = notificationRepository.existsByPullRequestIdAndGrade(
-                    "pr-zombie-hunters/repo#42", "defeated"
-                )
-
-                // Then: false가 반환된다 (defeated는 아직 발송 안 함)
-                result shouldBe false
-            }
-
-            it("다른 PR의 이벤트는 구분된다") {
-                // Given: PR#42에 hp_updated 이력이 있을 때
-                notificationRepository.save(
-                    Notification(
-                        pullRequestId = "pr-zombie-hunters/repo#42",
-                        recipientEmail = "team@gmail.com",
-                        grade = "hp_updated",
+                    // When: 같은 PR + 같은 이벤트 타입으로 exists를 조회하면
+                    val result = notificationRepository.existsByPullRequestIdAndGrade(
+                        "pr-zombie-hunters/repo#42", "hp_updated"
                     )
-                )
 
-                // When: 다른 PR#10으로 같은 이벤트 타입을 조회하면
-                val result = notificationRepository.existsByPullRequestIdAndGrade(
-                    "pr-zombie-hunters/repo#10", "hp_updated"
-                )
+                    // Then: true가 반환된다 (이미 발송됨)
+                    result shouldBe true
+                }
 
-                // Then: false가 반환된다 (PR#10은 발송 이력 없음)
-                result shouldBe false
+                it("저장되지 않은 PR은 exists가 false를 반환한다") {
+                    // Given: 아무 이력도 없을 때
+
+                    // When: 없는 PR로 exists를 조회하면
+                    val result = notificationRepository.existsByPullRequestIdAndGrade(
+                        "pr-zombie-hunters/repo#999", "hp_updated"
+                    )
+
+                    // Then: false가 반환된다 (미발송)
+                    result shouldBe false
+                }
+
+                it("같은 PR이라도 다른 이벤트 타입은 별개로 인식한다") {
+                    // Given: PR#42에 hp_updated 이력만 있을 때
+                    notificationRepository.save(
+                        Notification(
+                            pullRequestId = "pr-zombie-hunters/repo#42",
+                            recipientEmail = "team@gmail.com",
+                            grade = "hp_updated",
+                        )
+                    )
+
+                    // When: 같은 PR이지만 defeated 이벤트 타입으로 조회하면
+                    val result = notificationRepository.existsByPullRequestIdAndGrade(
+                        "pr-zombie-hunters/repo#42", "defeated"
+                    )
+
+                    // Then: false가 반환된다 (defeated는 아직 발송 안 함)
+                    result shouldBe false
+                }
+
+                it("다른 PR의 이벤트는 구분된다") {
+                    // Given: PR#42에 hp_updated 이력이 있을 때
+                    notificationRepository.save(
+                        Notification(
+                            pullRequestId = "pr-zombie-hunters/repo#42",
+                            recipientEmail = "team@gmail.com",
+                            grade = "hp_updated",
+                        )
+                    )
+
+                    // When: 다른 PR#10으로 같은 이벤트 타입을 조회하면
+                    val result = notificationRepository.existsByPullRequestIdAndGrade(
+                        "pr-zombie-hunters/repo#10", "hp_updated"
+                    )
+
+                    // Then: false가 반환된다 (PR#10은 발송 이력 없음)
+                    result shouldBe false
+                }
             }
         }
     }
-})
+}
