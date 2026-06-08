@@ -585,8 +585,8 @@ const currentHp = Math.max(0, maxHp - totalDamage);
 | DevOps | 송윤서, 성수연 | CI/CD 파이프라인, Docker Compose, 모니터링 |
 | 백엔드 A | 조혜연 | Collector 서비스, GitHub API / Webhook 연동 |
 | 백엔드 B | 김관혁 | Grader 서비스, 가상 스레드 배치, Redis 동시성 |
-| 백엔드 C | 성수연 | Notifier 서비스, REST API, DevOps |
-| DB 담당 | 지현 | ERD 설계, Flyway 마이그레이션, 인덱스 최적화 |
+| 백엔드 C | 성수연 | Notifier 서비스, REST API, DevOps + Flyway 마이그레이션 |
+| DB 담당 | 지현 | ERD 설계, 인덱스 최적화 |
 | 프론트엔드 | 최소영 | React 대시보드 UI, HP 바, 팀원 데미지 기여 시각화 |
 
 
