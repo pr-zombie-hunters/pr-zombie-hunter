@@ -597,6 +597,6 @@ const currentHp = Math.max(0, maxHp - totalDamage);
 
 | 스프린트 | 기간 | 목표 |
 | --- | --- | --- |
-| Sprint 1 | 5/30 ~ 6/3 | 환경 세팅, RabbitMQ 설계, HP 몬스터 도메인 모델 확정 |
-| Sprint 2 | 6/4 ~ 6/7 | TDD 작성 + 핵심 기능 구현 (HP 성장, 데미지, MQ 통신) |
+| Sprint 1 | 5/30 ~ 6/2 | 환경 세팅, RabbitMQ 설계, HP 몬스터 도메인 모델 확정 |
+| Sprint 2 | 6/3 ~ 6/7 | TDD 작성 + 핵심 기능 구현 (HP 성장, 데미지, MQ 통신) |
 | Sprint 3 | 6/8 ~ 6/9 | 통합 테스트, CI/CD, Revert E2E, 데모 준비 |
