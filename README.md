@@ -1,4 +1,4 @@
-# 🧟 PR Zombie Hunter 기획서
+# 🧟 PR Zombie Hunter
 팀 프로젝트 · 8인 · 2025년 5월~6월
 v2 — HP 몬스터 시스템 + RabbitMQ 도입
 
